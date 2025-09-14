@@ -1,61 +1,36 @@
-import { Request, Response } from 'express';
-import { ApiResponse } from '../types';
+import { Request, Response } from "express";
+import { ApiResponse } from "../types";
+import { analyzePose } from "../services/mlService";
+import ExerciseService from "../services/exerciseService";
+import SessionService from "../services/sessionService";
 
-// Mock data for now - replace with actual database queries later
-const mockExercises = [
-  {
-    id: '1',
-    name: 'Squats',
-    description: 'Basic squat exercise for leg strength',
-    instructions: ['Stand with feet shoulder-width apart', 'Lower your body as if sitting back into a chair', 'Return to starting position'],
-    difficulty: 'beginner',
-    duration: 300, // 5 minutes
-    targetMuscles: ['quadriceps', 'glutes', 'hamstrings'],
-    imageUrl: '/images/squats.jpg',
-    videoUrl: '/videos/squats.mp4'
-  },
-  {
-    id: '2',
-    name: 'Push-ups',
-    description: 'Upper body strength exercise',
-    instructions: ['Start in plank position', 'Lower your chest to the ground', 'Push back up to starting position'],
-    difficulty: 'intermediate',
-    duration: 240, // 4 minutes
-    targetMuscles: ['chest', 'shoulders', 'triceps'],
-    imageUrl: '/images/pushups.jpg',
-    videoUrl: '/videos/pushups.mp4'
-  },
-  {
-    id: '3',
-    name: 'Lunges',
-    description: 'Single leg strength and balance exercise',
-    instructions: ['Step forward with one leg', 'Lower your hips until both knees are bent at 90 degrees', 'Push back to starting position'],
-    difficulty: 'beginner',
-    duration: 360, // 6 minutes
-    targetMuscles: ['quadriceps', 'glutes', 'hamstrings'],
-    imageUrl: '/images/lunges.jpg',
-    videoUrl: '/videos/lunges.mp4'
-  }
-];
-
+// =======================
+// CRUD for Exercises
+// =======================
 export const getExercises = async (req: Request, res: Response) => {
   try {
-    // TODO: Replace with actual database query
-    // const exercises = await ExerciseService.getAllExercises();
+    const { difficulty, category, targetMuscles, search } = req.query;
     
-    const response: ApiResponse<typeof mockExercises> = {
+    const filters: any = {};
+    if (difficulty) filters.difficulty = difficulty;
+    if (category) filters.category = category;
+    if (targetMuscles) filters.targetMuscles = Array.isArray(targetMuscles) ? targetMuscles : [targetMuscles];
+    if (search) filters.search = search as string;
+    
+    const exercises = await ExerciseService.getExercises(filters);
+    
+    const response: ApiResponse<typeof exercises> = {
       success: true,
-      data: mockExercises,
-      message: 'Exercises retrieved successfully'
+      data: exercises,
+      message: "Exercises retrieved successfully",
     };
-    
     res.json(response);
   } catch (error) {
-    console.error('Error fetching exercises:', error);
+    console.error("Error fetching exercises:", error);
     const response: ApiResponse<null> = {
       success: false,
       data: null,
-      message: 'Failed to fetch exercises'
+      message: "Failed to fetch exercises",
     };
     res.status(500).json(response);
   }
@@ -64,67 +39,60 @@ export const getExercises = async (req: Request, res: Response) => {
 export const getExercise = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
-    
-    // TODO: Replace with actual database query
-    // const exercise = await ExerciseService.getExerciseById(id);
-    
-    const exercise = mockExercises.find(ex => ex.id === id);
-    
+    const exercise = await ExerciseService.getExerciseById(id);
+
     if (!exercise) {
-      const response: ApiResponse<null> = {
+      return res.status(404).json({
         success: false,
         data: null,
-        message: 'Exercise not found'
-      };
-      return res.status(404).json(response);
+        message: "Exercise not found",
+      });
     }
-    
+
     const response: ApiResponse<typeof exercise> = {
       success: true,
       data: exercise,
-      message: 'Exercise retrieved successfully'
+      message: "Exercise retrieved successfully",
     };
-    
     res.json(response);
   } catch (error) {
-    console.error('Error fetching exercise:', error);
-    const response: ApiResponse<null> = {
+    console.error("Error fetching exercise:", error);
+    res.status(500).json({
       success: false,
       data: null,
-      message: 'Failed to fetch exercise'
-    };
-    res.status(500).json(response);
+      message: "Failed to fetch exercise",
+    });
   }
 };
 
 export const createExercise = async (req: Request, res: Response) => {
   try {
     const exerciseData = req.body;
+    const userId = (req as any).user?.id;
     
-    // TODO: Replace with actual database operation
-    // const newExercise = await ExerciseService.createExercise(exerciseData);
+    if (!userId) {
+      return res.status(401).json({
+        success: false,
+        data: null,
+        message: "User not authenticated",
+      });
+    }
     
-    const newExercise = {
-      id: Date.now().toString(),
-      ...exerciseData,
-      createdAt: new Date().toISOString()
-    };
-    
+    const newExercise = await ExerciseService.createExercise(exerciseData, userId);
+
     const response: ApiResponse<typeof newExercise> = {
       success: true,
       data: newExercise,
-      message: 'Exercise created successfully'
+      message: "Exercise created successfully",
     };
-    
     res.status(201).json(response);
   } catch (error) {
-    console.error('Error creating exercise:', error);
-    const response: ApiResponse<null> = {
+    console.error("Error creating exercise:", error);
+    res.status(500).json({
       success: false,
       data: null,
-      message: 'Failed to create exercise'
-    };
-    res.status(500).json(response);
+      message: "Failed to create exercise",
+    });
   }
 };
 
@@ -132,41 +100,39 @@ export const updateExercise = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const updateData = req.body;
+    const userId = (req as any).user?.id;
     
-    // TODO: Replace with actual database operation
-    // const updatedExercise = await ExerciseService.updateExercise(id, updateData);
-    
-    const exerciseIndex = mockExercises.findIndex(ex => ex.id === id);
-    if (exerciseIndex === -1) {
-      const response: ApiResponse<null> = {
+    if (!userId) {
+      return res.status(401).json({
         success: false,
         data: null,
-        message: 'Exercise not found'
-      };
-      return res.status(404).json(response);
+        message: "User not authenticated",
+      });
     }
+
+    const updatedExercise = await ExerciseService.updateExercise(id, updateData, userId);
     
-    const updatedExercise = {
-      ...mockExercises[exerciseIndex],
-      ...updateData,
-      updatedAt: new Date().toISOString()
-    };
-    
+    if (!updatedExercise) {
+      return res.status(404).json({
+        success: false,
+        data: null,
+        message: "Exercise not found",
+      });
+    }
+
     const response: ApiResponse<typeof updatedExercise> = {
       success: true,
       data: updatedExercise,
-      message: 'Exercise updated successfully'
+      message: "Exercise updated successfully",
     };
-    
     res.json(response);
   } catch (error) {
-    console.error('Error updating exercise:', error);
-    const response: ApiResponse<null> = {
+    console.error("Error updating exercise:", error);
+    res.status(500).json({
       success: false,
       data: null,
-      message: 'Failed to update exercise'
-    };
-    res.status(500).json(response);
+      message: "Failed to update exercise",
+    });
   }
 };
 
@@ -174,33 +140,78 @@ export const deleteExercise = async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     
-    // TODO: Replace with actual database operation
-    // await ExerciseService.deleteExercise(id);
+    const deleted = await ExerciseService.deleteExercise(id);
     
-    const exerciseIndex = mockExercises.findIndex(ex => ex.id === id);
-    if (exerciseIndex === -1) {
-      const response: ApiResponse<null> = {
+    if (!deleted) {
+      return res.status(404).json({
         success: false,
         data: null,
-        message: 'Exercise not found'
-      };
-      return res.status(404).json(response);
+        message: "Exercise not found",
+      });
     }
-    
+
     const response: ApiResponse<null> = {
       success: true,
       data: null,
-      message: 'Exercise deleted successfully'
+      message: "Exercise deleted successfully",
     };
-    
     res.json(response);
   } catch (error) {
-    console.error('Error deleting exercise:', error);
-    const response: ApiResponse<null> = {
+    console.error("Error deleting exercise:", error);
+    res.status(500).json({
       success: false,
       data: null,
-      message: 'Failed to delete exercise'
+      message: "Failed to delete exercise",
+    });
+  }
+};
+
+// =======================
+// Analyze Exercise (ML + DB)
+// =======================
+export const analyzeExercise = async (req: Request, res: Response) => {
+  try {
+    const { sessionId, landmarks, exercise } = req.body;
+
+    if (!sessionId || !landmarks) {
+      return res.status(400).json({
+        success: false,
+        message: "Session ID and landmarks are required"
+      });
+    }
+
+    // Call Python ML backend
+    const result = await analyzePose(landmarks);
+
+    // Add pose frame to session
+    const frameData = {
+      timestamp: Date.now(),
+      landmarks: landmarks,
+      angles: result.angles || {},
+      isCorrectForm: result.accuracy > 70,
+      confidence: result.accuracy / 100
     };
-    res.status(500).json(response);
+
+    await SessionService.addPoseFrame(sessionId, frameData);
+
+    const response = {
+      success: true,
+      data: {
+        accuracy: result.accuracy,
+        feedback: result.feedback,
+        angles: result.angles,
+        isCorrectForm: frameData.isCorrectForm,
+        confidence: frameData.confidence
+      }
+    };
+
+    res.json(response);
+  } catch (err: any) {
+    console.error("Error analyzing exercise:", err);
+    res.status(500).json({ 
+      success: false, 
+      message: "Failed to analyze exercise",
+      error: err.message 
+    });
   }
 };

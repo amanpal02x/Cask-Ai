@@ -27,38 +27,15 @@ const DoctorDashboard: React.FC = () => {
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const [statsResponse, patientsResponse] = await Promise.all([
+        const [statsResponse, patientsResponse, activityResponse] = await Promise.all([
           apiService.getDashboardStats(),
-          apiService.getPatients()
+          apiService.getPatients(),
+          apiService.getRecentActivity(10)
         ]);
 
         if (statsResponse.success) setStats(statsResponse.data!);
         if (patientsResponse.success) setPatients(patientsResponse.data!);
-        
-        // Mock recent activity data
-        setRecentActivity([
-          {
-            id: 1,
-            patientName: 'John Doe',
-            action: 'completed exercise session',
-            time: '2 hours ago',
-            score: 85
-          },
-          {
-            id: 2,
-            patientName: 'Jane Smith',
-            action: 'uploaded exercise video',
-            time: '4 hours ago',
-            score: null
-          },
-          {
-            id: 3,
-            patientName: 'Mike Johnson',
-            action: 'completed exercise session',
-            time: '6 hours ago',
-            score: 92
-          }
-        ]);
+        if (activityResponse.success) setRecentActivity(activityResponse.data!);
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
       } finally {
@@ -273,26 +250,26 @@ const DoctorDashboard: React.FC = () => {
                           </div>
                           <div className="flex-1 min-w-0">
                             <p className="text-sm font-medium text-gray-900 truncate">
-                              {activity.patientName}
+                              {activity.user?.name || 'Patient'}
                             </p>
                             <p className="text-sm text-gray-500">
-                              {activity.action}
+                              {activity.title}
                             </p>
                           </div>
                           <div className="flex-shrink-0 text-right">
-                            {activity.score && (
+                            {activity.session?.score && (
                               <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                activity.score >= 80 
+                                activity.session.score >= 80 
                                   ? 'bg-green-100 text-green-800'
-                                  : activity.score >= 60
+                                  : activity.session.score >= 60
                                   ? 'bg-yellow-100 text-yellow-800'
                                   : 'bg-red-100 text-red-800'
                               }`}>
-                                {activity.score}%
+                                {activity.session.score}%
                               </span>
                             )}
                             <p className="text-xs text-gray-500 mt-1">
-                              {activity.time}
+                              {new Date(activity.createdAt).toLocaleDateString()}
                             </p>
                           </div>
                         </div>
@@ -350,8 +327,14 @@ const DoctorDashboard: React.FC = () => {
                             </p>
                           </div>
                           <div className="flex-shrink-0">
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
-                              Active
+                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              patient.status === 'active' 
+                                ? 'bg-green-100 text-green-800'
+                                : patient.status === 'pending'
+                                ? 'bg-yellow-100 text-yellow-800'
+                                : 'bg-gray-100 text-gray-800'
+                            }`}>
+                              {patient.status || 'Active'}
                             </span>
                           </div>
                         </div>
@@ -384,29 +367,41 @@ const DoctorDashboard: React.FC = () => {
           </div>
           <div className="mt-5">
             <div className="space-y-3">
-              <div className="flex items-center p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-                <AlertTriangle className="h-5 w-5 text-yellow-600 mr-3" />
-                <div>
-                  <p className="text-sm font-medium text-yellow-800">
-                    Patient John Doe needs attention
-                  </p>
-                  <p className="text-xs text-yellow-600">
-                    Low exercise scores for the past 3 sessions
-                  </p>
+              {patients.filter(p => p.averageScore && p.averageScore < 60).slice(0, 2).map((patient) => (
+                <div key={patient.id} className="flex items-center p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+                  <AlertTriangle className="h-5 w-5 text-yellow-600 mr-3" />
+                  <div>
+                    <p className="text-sm font-medium text-yellow-800">
+                      {patient.name} needs attention
+                    </p>
+                    <p className="text-xs text-yellow-600">
+                      Low exercise scores (avg: {patient.averageScore}%)
+                    </p>
+                  </div>
                 </div>
-              </div>
+              ))}
               
-              <div className="flex items-center p-3 bg-blue-50 border border-blue-200 rounded-md">
-                <CheckCircle className="h-5 w-5 text-blue-600 mr-3" />
-                <div>
-                  <p className="text-sm font-medium text-blue-800">
-                    Jane Smith completed her weekly goal
-                  </p>
-                  <p className="text-xs text-blue-600">
-                    Great progress! Consider increasing difficulty
-                  </p>
+              {patients.filter(p => p.averageScore && p.averageScore > 85).slice(0, 1).map((patient) => (
+                <div key={patient.id} className="flex items-center p-3 bg-blue-50 border border-blue-200 rounded-md">
+                  <CheckCircle className="h-5 w-5 text-blue-600 mr-3" />
+                  <div>
+                    <p className="text-sm font-medium text-blue-800">
+                      {patient.name} is doing great!
+                    </p>
+                    <p className="text-xs text-blue-600">
+                      Excellent progress (avg: {patient.averageScore}%)
+                    </p>
+                  </div>
                 </div>
-              </div>
+              ))}
+              
+              {patients.filter(p => !p.averageScore || (p.averageScore >= 60 && p.averageScore <= 85)).length === 0 && 
+               patients.filter(p => p.averageScore && p.averageScore < 60).length === 0 &&
+               patients.filter(p => p.averageScore && p.averageScore > 85).length === 0 && (
+                <div className="text-center py-4">
+                  <p className="text-sm text-gray-500">No alerts at this time</p>
+                </div>
+              )}
             </div>
           </div>
         </div>

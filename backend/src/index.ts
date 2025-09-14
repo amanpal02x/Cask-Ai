@@ -3,12 +3,15 @@ import cors from 'cors';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
-
 import authRoutes from './routes/auth';
 import userRoutes from './routes/user';
 import dashboardRoutes from './routes/dashboard';
 import exerciseRoutes from './routes/exercises';
 import sessionRoutes from './routes/sessions';
+import exerciseResultsRoutes from './routes/exerciseResults';
+import activityRoutes from './routes/activities';
+import notificationRoutes from './routes/notifications';
+import patientDoctorRoutes from './routes/patientDoctor';
 
 dotenv.config();
 
@@ -46,6 +49,11 @@ app.use('/api/user', userRoutes);
 app.use('/api/dashboard', dashboardRoutes);
 app.use('/api/exercises', exerciseRoutes);
 app.use('/api/sessions', sessionRoutes);
+app.use('/api/exercise', exerciseRoutes);
+app.use('/api/results', exerciseResultsRoutes);
+app.use('/api/activities', activityRoutes);
+app.use('/api/notifications', notificationRoutes);
+app.use('/api/doctor', patientDoctorRoutes);
 
 const PORT = Number(process.env.PORT) || 8000;
 app.listen(PORT, () => {

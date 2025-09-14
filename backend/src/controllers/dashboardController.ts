@@ -1,23 +1,26 @@
 import { Request, Response } from 'express';
 import { ApiResponse } from '../types';
-
-// Mock data for now - replace with actual database queries later
-const mockDashboardStats = {
-  totalSessions: 12,
-  averageScore: 85,
-  totalExercises: 8,
-  streakDays: 5
-};
+import DashboardService from '../services/dashboardService';
 
 export const getDashboardStats = async (req: Request, res: Response) => {
   try {
-    // TODO: Replace with actual database query
-    // const userId = req.user?.id;
-    // const stats = await DashboardService.getStats(userId);
+    const userId = (req as any).user?.id;
+    const userRole = (req as any).user?.role;
     
-    const response: ApiResponse<typeof mockDashboardStats> = {
+    if (!userId || !userRole) {
+      const response: ApiResponse<null> = {
+        success: false,
+        data: null,
+        message: 'User not authenticated'
+      };
+      return res.status(401).json(response);
+    }
+    
+    const stats = await DashboardService.getDashboardStats(userId, userRole);
+    
+    const response: ApiResponse<typeof stats> = {
       success: true,
-      data: mockDashboardStats,
+      data: stats,
       message: 'Dashboard stats retrieved successfully'
     };
     
@@ -36,20 +39,26 @@ export const getDashboardStats = async (req: Request, res: Response) => {
 export const getProgressData = async (req: Request, res: Response) => {
   try {
     const { exerciseId, days } = req.query;
+    const userId = (req as any).user?.id;
     
-    // TODO: Replace with actual database query
-    // const userId = req.user?.id;
-    // const progressData = await DashboardService.getProgressData(userId, exerciseId, days);
+    if (!userId) {
+      const response: ApiResponse<null> = {
+        success: false,
+        data: null,
+        message: 'User not authenticated'
+      };
+      return res.status(401).json(response);
+    }
     
-    const mockProgressData = [
-      { date: '2024-01-01', score: 80, reps: 10 },
-      { date: '2024-01-02', score: 85, reps: 12 },
-      { date: '2024-01-03', score: 90, reps: 15 }
-    ];
+    const progressData = await DashboardService.getProgressData(
+      userId, 
+      exerciseId as string, 
+      parseInt(days as string) || 30
+    );
     
-    const response: ApiResponse<typeof mockProgressData> = {
+    const response: ApiResponse<typeof progressData> = {
       success: true,
-      data: mockProgressData,
+      data: progressData,
       message: 'Progress data retrieved successfully'
     };
     

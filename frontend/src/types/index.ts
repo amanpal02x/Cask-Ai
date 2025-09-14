@@ -14,6 +14,10 @@ export interface Patient extends User {
   doctorId?: string;
   medicalHistory?: string;
   currentExercises?: Exercise[];
+  status?: string;
+  averageScore?: number;
+  totalSessions?: number;
+  lastInteraction?: string;
 }
 
 // Doctor Types
@@ -123,6 +127,8 @@ export interface DashboardStats {
   totalExercises: number;
   streakDays: number;
   lastSessionDate?: string;
+  weeklyProgress?: number;
+  improvementRate?: number;
 }
 
 export interface ChartData {
@@ -130,5 +136,30 @@ export interface ChartData {
   score: number;
   reps: number;
   duration: number;
-  errors: number;
+  errors?: number;
+  sessionCount?: number;
+}
+
+// Activity Types
+export interface Activity {
+  id: string;
+  type: string;
+  title: string;
+  description: string;
+  metadata: any;
+  createdAt: string;
+  user?: {
+    id: string;
+    name: string;
+    role: string;
+  };
+  session?: {
+    id: string;
+    score?: number;
+    reps?: number;
+  };
+  exercise?: {
+    id: string;
+    name: string;
+  };
 }

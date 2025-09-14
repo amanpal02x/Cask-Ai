@@ -12,28 +12,28 @@ import {
   CheckCircle
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import { Exercise, DashboardStats, ExerciseSession } from '../types';
+import { DashboardStats, ExerciseSession } from '../types';
 import apiService from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 
 const PatientDashboard: React.FC = () => {
   const { user } = useAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
-  const [exercises, setExercises] = useState<Exercise[]>([]);
+  // const [exercises, setExercises] = useState<Exercise[]>([]);
   const [recentSessions, setRecentSessions] = useState<ExerciseSession[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
-        const [statsResponse, exercisesResponse, sessionsResponse] = await Promise.all([
+        const [statsResponse, , sessionsResponse] = await Promise.all([
           apiService.getDashboardStats(),
           apiService.getExercises(),
           apiService.getSessionHistory(5)
         ]);
 
         if (statsResponse.success) setStats(statsResponse.data!);
-        if (exercisesResponse.success) setExercises(exercisesResponse.data || []);
+        // if (exercisesResponse.success) setExercises(exercisesResponse.data || []);
         if (sessionsResponse.success) setRecentSessions(sessionsResponse.data!);
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);

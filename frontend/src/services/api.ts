@@ -25,6 +25,8 @@ class ApiService {
       },
     });
 
+
+
     // Request interceptor to add auth token
     this.api.interceptors.request.use(
       (config) => {
@@ -113,16 +115,17 @@ class ApiService {
     return response.data;
   }
 
-  // Real-time Analysis
-  async analyzeFrame(sessionId: string, frameData: string): Promise<ApiResponse<{
-    isCorrect: boolean;
-    message: string;
-    confidence: number;
-    repCount: number;
-  }>> {
-    const response = await this.api.post(`/sessions/${sessionId}/analyze`, { frameData });
-    return response.data;
-  }
+  // Pose Analysis with ML backend
+async analyzePose(sessionId: string, landmarks: number[][]): Promise<ApiResponse<{
+  accuracy: number;
+  feedback: string[];
+  repCount?: number;
+}>> {
+  const response = await this.api.post(`/sessions/${sessionId}/analyze-pose`, {
+    landmarks,
+  });
+  return response.data;
+}
 
   // Progress and Analytics
   async getDashboardStats(): Promise<ApiResponse<DashboardStats>> {
@@ -161,6 +164,28 @@ class ApiService {
 
   async sendRecommendation(patientId: string, message: string): Promise<ApiResponse<void>> {
     const response = await this.api.post(`/doctor/patients/${patientId}/recommendations`, { message });
+    return response.data;
+  }
+
+  // Activity endpoints
+  async getActivityFeed(options?: {
+    limit?: number;
+    offset?: number;
+    type?: string;
+    visibility?: string;
+  }): Promise<ApiResponse<any[]>> {
+    const params = new URLSearchParams();
+    if (options?.limit) params.append('limit', options.limit.toString());
+    if (options?.offset) params.append('offset', options.offset.toString());
+    if (options?.type) params.append('type', options.type);
+    if (options?.visibility) params.append('visibility', options.visibility);
+    
+    const response = await this.api.get(`/activities?${params}`);
+    return response.data;
+  }
+
+  async getRecentActivity(limit: number = 10): Promise<ApiResponse<any[]>> {
+    const response = await this.api.get(`/activities/recent?limit=${limit}`);
     return response.data;
   }
 

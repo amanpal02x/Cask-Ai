@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { 
   Play, 
@@ -16,6 +16,11 @@ import {
 import { Exercise, RealTimeFeedback, ExerciseSession } from '../types';
 import apiService from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
+import PostureGuidance from '../components/PostureGuidance';
+import { Pose } from '@mediapipe/pose';
+import { Camera as MediaPipeCamera } from '@mediapipe/camera_utils';
+import { drawConnectors, drawLandmarks } from '@mediapipe/drawing_utils';
+import { POSE_CONNECTIONS } from '@mediapipe/pose';
 
 const LiveExercisePage: React.FC = () => {
   const { exerciseId } = useParams<{ exerciseId: string }>();
@@ -31,11 +36,17 @@ const LiveExercisePage: React.FC = () => {
   const [sessionTime, setSessionTime] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [accuracy, setAccuracy] = useState<number | null>(null);
+  const [currentPosture, setCurrentPosture] = useState<string>('');
+  const [poseDetected, setPoseDetected] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
   const sessionStartTime = useRef<Date | null>(null);
+  const poseRef = useRef<Pose | null>(null);
+  const cameraRef = useRef<MediaPipeCamera | null>(null);
 
   useEffect(() => {
     const fetchExercise = async () => {
@@ -44,17 +55,257 @@ const LiveExercisePage: React.FC = () => {
           const response = await apiService.getExercise(exerciseId);
           if (response.success && response.data) {
             setExercise(response.data);
+          } else {
+            setError('Failed to load exercise details: ' + (response.message || 'Unknown error'));
           }
         } catch (error) {
           console.error('Failed to fetch exercise:', error);
-          setError('Failed to load exercise details');
+          setError('Failed to load exercise details: ' + (error instanceof Error ? error.message : 'Unknown error'));
         }
+      } else if (exerciseId === 'new') {
+        // For new exercises, create a default exercise object
+        setExercise({
+          id: 'default',
+          name: 'Live Exercise Session',
+          description: 'Real-time exercise analysis session',
+          targetMuscles: ['full body'],
+          instructions: [
+            'Position yourself in front of the camera',
+            'Start the session when ready',
+            'Follow the real-time feedback for proper form'
+          ],
+          difficulty: 'beginner',
+          duration: 10,
+          videoUrl: '',
+          imageUrl: ''
+        });
       }
       setLoading(false);
     };
 
     fetchExercise();
   }, [exerciseId]);
+
+  const analyzePose = useCallback(async (landmarks: any[]) => {
+    if (!session) return;
+
+    try {
+      // Transform MediaPipe landmarks to the format expected by the backend
+      const transformedLandmarks = landmarks.map(landmark => [
+        landmark.x,
+        landmark.y,
+        landmark.z,
+        landmark.visibility || 0
+      ]);
+
+      const response = await apiService.analyzePose(session.id, transformedLandmarks);
+      
+      if (response.success && response.data) {
+        setAccuracy(response.data.accuracy);
+        
+        // Update rep count if provided
+        if (response.data.repCount !== undefined) {
+          setRepCount(response.data.repCount);
+        }
+
+        // Set feedback
+        const feedbackMessage = response.data.feedback.join(' ');    
+        setFeedback({
+          isCorrect: response.data.accuracy > 70,
+          message: feedbackMessage,
+          confidence: response.data.accuracy / 100,
+          timestamp: Date.now()
+        });
+
+        // Determine current posture based on landmarks
+        determineCurrentPosture(landmarks);
+      }
+    } catch (error) {
+      console.error('Error analyzing pose:', error);
+    }
+  }, [session]);
+
+  const initializeMediaPipe = useCallback(() => {
+    if (!videoRef.current || !canvasRef.current) {
+      console.log('MediaPipe initialization skipped: missing video or canvas ref');
+      return;
+    }
+
+    // Clean up any existing MediaPipe resources first
+    if (poseRef.current) {
+      console.log('Cleaning up existing MediaPipe pose...');
+      try {
+        poseRef.current.close();
+      } catch (error) {
+        console.warn('Error closing existing pose:', error);
+      }
+      poseRef.current = null;
+    }
+    
+    if (cameraRef.current) {
+      console.log('Cleaning up existing MediaPipe camera...');
+      try {
+        cameraRef.current.stop();
+      } catch (error) {
+        console.warn('Error stopping existing camera:', error);
+      }
+      cameraRef.current = null;
+    }
+
+    console.log('Initializing MediaPipe Pose...');
+
+    try {
+      const pose = new Pose({
+        locateFile: (file) => {
+          return `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`;
+        }
+      });
+
+      pose.setOptions({
+        modelComplexity: 1,
+        smoothLandmarks: true,
+        enableSegmentation: false,
+        smoothSegmentation: false,
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5,
+      });
+
+      pose.onResults((results) => {
+        if (!canvasRef.current || !videoRef.current) return;
+
+        const canvasCtx = canvasRef.current.getContext('2d');
+        if (!canvasCtx) return;
+
+        canvasCtx.save();
+        canvasCtx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+        
+        // Only draw pose landmarks and connections, not the video frame
+        // The video element will handle displaying the video
+        if (results.poseLandmarks) {
+          setPoseDetected(true);
+          
+          // Draw pose landmarks
+          drawConnectors(canvasCtx, results.poseLandmarks, POSE_CONNECTIONS, {
+            color: '#00FF00',
+            lineWidth: 2
+          });
+          
+          drawLandmarks(canvasCtx, results.poseLandmarks, {
+            color: '#FF0000',
+            lineWidth: 1,
+            radius: 3
+          });
+
+          // Analyze pose if session is active
+          if (isRecording && session) {
+            analyzePose(results.poseLandmarks);
+          }
+        } else {
+          setPoseDetected(false);
+        }
+
+        canvasCtx.restore();
+      });
+
+      // Wait for video to be ready before starting MediaPipe camera
+      const startMediaPipeCamera = () => {
+        if (videoRef.current && videoRef.current.readyState >= 2) {
+          console.log('Starting MediaPipe camera with video dimensions:', {
+            width: videoRef.current.videoWidth,
+            height: videoRef.current.videoHeight
+          });
+
+          try {
+            const camera = new MediaPipeCamera(videoRef.current, {
+              onFrame: async () => {
+                if (videoRef.current && videoRef.current.readyState >= 2 && poseRef.current) {
+                  try {
+                    await pose.send({ image: videoRef.current });
+                  } catch (error) {
+                    console.warn('Error sending frame to MediaPipe:', error);
+                  }
+                }
+              },
+              width: videoRef.current.videoWidth || 1280,
+              height: videoRef.current.videoHeight || 720
+            });
+
+            poseRef.current = pose;
+            cameraRef.current = camera;
+            camera.start();
+            console.log('MediaPipe camera started successfully');
+          } catch (error) {
+            console.error('Error starting MediaPipe camera:', error);
+          }
+        } else {
+          console.log('Video not ready, retrying MediaPipe camera initialization...');
+          setTimeout(startMediaPipeCamera, 100);
+        }
+      };
+
+      startMediaPipeCamera();
+    } catch (error) {
+      console.error('Error initializing MediaPipe:', error);
+    }
+  }, [isRecording, session, analyzePose]);
+
+  // Initialize MediaPipe Pose
+  useEffect(() => {
+    if (cameraActive && videoRef.current) {
+      // Wait for video to be ready before initializing MediaPipe
+      const checkVideoReady = () => {
+        if (videoRef.current && videoRef.current.readyState >= 2) {
+          console.log('Video is ready, initializing MediaPipe...');
+          // Add a small delay to ensure video is fully loaded
+          setTimeout(() => {
+            initializeMediaPipe();
+          }, 500);
+        } else {
+          console.log('Video not ready yet, waiting...');
+          setTimeout(checkVideoReady, 200);
+        }
+      };
+      
+      checkVideoReady();
+    }
+
+    return () => {
+      console.log('Cleaning up MediaPipe resources...');
+      if (poseRef.current) {
+        try {
+          poseRef.current.close();
+        } catch (error) {
+          console.warn('Error closing pose during cleanup:', error);
+        }
+        poseRef.current = null;
+      }
+      if (cameraRef.current) {
+        try {
+          cameraRef.current.stop();
+        } catch (error) {
+          console.warn('Error stopping camera during cleanup:', error);
+        }
+        cameraRef.current = null;
+      }
+    };
+  }, [cameraActive, initializeMediaPipe]);
+
+  // Handle canvas resize
+  useEffect(() => {
+    const handleResize = () => {
+      if (canvasRef.current && cameraActive) {
+        const container = canvasRef.current.parentElement;
+        if (container) {
+          const rect = container.getBoundingClientRect();
+          canvasRef.current.width = rect.width;
+          canvasRef.current.height = rect.height;
+        }
+      }
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [cameraActive]);
 
   useEffect(() => {
     if (isRecording && !isPaused) {
@@ -74,8 +325,51 @@ const LiveExercisePage: React.FC = () => {
     };
   }, [isRecording, isPaused]);
 
+  // Debug cameraActive state changes
+  useEffect(() => {
+    console.log('cameraActive state changed:', cameraActive);
+  }, [cameraActive]);
+
+
+  const determineCurrentPosture = (landmarks: any[]) => {
+    // Simple posture detection based on landmark positions
+    const leftShoulder = landmarks[11];
+    const rightShoulder = landmarks[12];
+    const leftHip = landmarks[23];
+    const rightHip = landmarks[24];
+    const leftKnee = landmarks[25];
+    const rightKnee = landmarks[26];
+    // const leftAnkle = landmarks[27];
+    // const rightAnkle = landmarks[28];
+
+    if (!leftShoulder || !rightShoulder || !leftHip || !rightHip) {
+      setCurrentPosture('Unknown');
+      return;
+    }
+
+    // Calculate angles and positions for posture detection
+    const shoulderDistance = Math.abs(leftShoulder.y - rightShoulder.y);
+    const hipDistance = Math.abs(leftHip.y - rightHip.y);
+    const kneeHeight = (leftKnee?.y || 0) + (rightKnee?.y || 0) / 2;
+    const hipHeight = (leftHip.y + rightHip.y) / 2;
+
+    if (kneeHeight > hipHeight - 0.1) {
+      setCurrentPosture('Squatting');
+    } else if (shoulderDistance < 0.05 && hipDistance < 0.05) {
+      setCurrentPosture('Standing Straight');
+    } else if (leftShoulder.y < rightShoulder.y - 0.05) {
+      setCurrentPosture('Leaning Left');
+    } else if (rightShoulder.y < leftShoulder.y - 0.05) {
+      setCurrentPosture('Leaning Right');
+    } else {
+      setCurrentPosture('Standing');
+    }
+  };
+
   const startCamera = async () => {
     try {
+      console.log('Requesting camera access...');
+      
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
           width: { ideal: 1280 },
@@ -85,26 +379,206 @@ const LiveExercisePage: React.FC = () => {
         audio: false
       });
 
+      console.log('Camera stream obtained:', stream);
+      console.log('Video tracks:', stream.getVideoTracks());
+
       if (videoRef.current) {
-        videoRef.current.srcObject = stream;
+        const video = videoRef.current;
+        video.srcObject = stream;
         streamRef.current = stream;
-        setCameraActive(true);
+        
+        console.log('Video element setup:', {
+          srcObject: video.srcObject,
+          videoWidth: video.videoWidth,
+          videoHeight: video.videoHeight,
+          readyState: video.readyState,
+          currentTime: video.currentTime,
+          style: {
+            display: video.style.display,
+            opacity: video.style.opacity,
+            visibility: video.style.visibility
+          },
+          computedStyle: {
+            display: window.getComputedStyle(video).display,
+            opacity: window.getComputedStyle(video).opacity,
+            visibility: window.getComputedStyle(video).visibility
+          }
+        });
+        
+        // Add multiple event listeners to ensure video loads properly
+        
+        const handleLoadedMetadata = () => {
+          console.log('Video metadata loaded:', {
+            videoWidth: video.videoWidth,
+            videoHeight: video.videoHeight,
+            readyState: video.readyState,
+            duration: video.duration
+          });
+          
+          // Ensure video is visible immediately
+          video.style.display = 'block';
+          video.style.opacity = '1';
+          video.style.visibility = 'visible';
+          
+          console.log('Video styles set after metadata loaded:', {
+            display: video.style.display,
+            opacity: video.style.opacity,
+            visibility: video.style.visibility,
+            computedDisplay: window.getComputedStyle(video).display,
+            computedOpacity: window.getComputedStyle(video).opacity,
+            computedVisibility: window.getComputedStyle(video).visibility
+          });
+          
+          // Force video to play
+          video.play().then(() => {
+            console.log('Video started playing successfully');
+            console.log('Setting cameraActive to true');
+            setCameraActive(true);
+            
+            // Set up canvas dimensions after video is ready
+            setTimeout(() => {
+              if (canvasRef.current) {
+                const container = canvasRef.current.parentElement;
+                if (container) {
+                  const rect = container.getBoundingClientRect();
+                  canvasRef.current.width = rect.width;
+                  canvasRef.current.height = rect.height;
+                  console.log('Canvas dimensions set:', rect.width, 'x', rect.height);
+                }
+              }
+            }, 100);
+            
+          }).catch((playError) => {
+            console.error('Failed to play video:', playError);
+            setError('Failed to start video playback: ' + playError.message);
+          });
+        };
+
+        const handleCanPlay = () => {
+          console.log('Video can play');
+        };
+
+        const handlePlaying = () => {
+          console.log('Video is playing');
+          // Ensure video is visible when it starts playing
+          video.style.display = 'block';
+          video.style.opacity = '1';
+          video.style.visibility = 'visible';
+        };
+
+        const handleError = (error: Event) => {
+          console.error('Video error:', error);
+          setError('Video playback error occurred: ' + (error instanceof Error ? error.message : 'Unknown error'));
+        };
+
+        // Add event listeners
+        video.addEventListener('loadedmetadata', handleLoadedMetadata);
+        video.addEventListener('canplay', handleCanPlay);
+        video.addEventListener('playing', handlePlaying);
+        video.addEventListener('error', handleError);
+        
+        // Cleanup function
+        const cleanup = () => {
+          video.removeEventListener('loadedmetadata', handleLoadedMetadata);
+          video.removeEventListener('canplay', handleCanPlay);
+          video.removeEventListener('playing', handlePlaying);
+          video.removeEventListener('error', handleError);
+        };
+        
+        // Store cleanup function for later use
+        (video as any)._cameraCleanup = cleanup;
+        
+        // Fallback: Force video to be visible after a short delay
+        setTimeout(() => {
+          if (video.srcObject && !cameraActive) {
+            console.log('Fallback: Forcing video visibility');
+            video.style.display = 'block';
+            video.style.opacity = '1';
+            video.style.visibility = 'visible';
+            setCameraActive(true);
+          }
+          
+          // Additional debugging
+          console.log('Fallback check - Video element state:', {
+            srcObject: video.srcObject,
+            cameraActive: cameraActive,
+            videoInDOM: document.contains(video),
+            videoParent: video.parentElement,
+            videoDimensions: {
+              width: video.offsetWidth,
+              height: video.offsetHeight,
+              clientWidth: video.clientWidth,
+              clientHeight: video.clientHeight
+            }
+          });
+        }, 1000);
       }
     } catch (error) {
       console.error('Error accessing camera:', error);
-      setError('Failed to access camera. Please check permissions.');
+      let errorMessage = 'Failed to access camera. ';
+      
+      if (error instanceof Error) {
+        if (error.name === 'NotAllowedError') {
+          errorMessage += 'Camera permission denied. Please allow camera access and refresh the page.';
+        } else if (error.name === 'NotFoundError') {
+          errorMessage += 'No camera found. Please connect a camera and try again.';
+        } else if (error.name === 'NotReadableError') {
+          errorMessage += 'Camera is already in use by another application.';
+        } else {
+          errorMessage += error.message;
+        }
+      }
+      
+      setError(errorMessage);
     }
   };
 
   const stopCamera = () => {
+    console.log('Stopping camera...');
+    
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current.getTracks().forEach(track => {
+        console.log('Stopping track:', track.kind);
+        track.stop();
+      });
       streamRef.current = null;
     }
+    
     if (videoRef.current) {
+      // Clean up event listeners
+      if ((videoRef.current as any)._cameraCleanup) {
+        (videoRef.current as any)._cameraCleanup();
+      }
+      
       videoRef.current.srcObject = null;
+      videoRef.current.style.display = 'none';
+      videoRef.current.style.opacity = '0';
     }
+    
+    // Clean up MediaPipe resources
+    if (poseRef.current) {
+      try {
+        poseRef.current.close();
+      } catch (error) {
+        console.warn('Error closing pose in stopCamera:', error);
+      }
+      poseRef.current = null;
+    }
+    if (cameraRef.current) {
+      try {
+        cameraRef.current.stop();
+      } catch (error) {
+        console.warn('Error stopping camera in stopCamera:', error);
+      }
+      cameraRef.current = null;
+    }
+    
     setCameraActive(false);
+    setPoseDetected(false);
+    setAccuracy(null);
+    setCurrentPosture('');
+    
+    console.log('Camera stopped successfully');
   };
 
   const startSession = async () => {
@@ -114,7 +588,10 @@ const LiveExercisePage: React.FC = () => {
         return;
       }
 
+      console.log('Starting session for exercise:', exercise.id);
       const response = await apiService.startSession(exercise.id);
+      console.log('Session response:', response);
+      
       if (response.success && response.data) {
         setSession(response.data);
         setIsRecording(true);
@@ -122,10 +599,13 @@ const LiveExercisePage: React.FC = () => {
         setSessionTime(0);
         setRepCount(0);
         setFeedback(null);
+        console.log('Session started successfully');
+      } else {
+        setError('Failed to start session: ' + (response.message || 'Unknown error'));
       }
     } catch (error) {
       console.error('Failed to start session:', error);
-      setError('Failed to start exercise session');
+      setError('Failed to start exercise session: ' + (error instanceof Error ? error.message : 'Unknown error'));
     }
   };
 
@@ -213,16 +693,48 @@ const LiveExercisePage: React.FC = () => {
           <div className="bg-white shadow rounded-lg">
             <div className="px-4 py-5 sm:p-6">
               <div className="aspect-video bg-gray-900 rounded-lg overflow-hidden relative">
-                {cameraActive ? (
+                {/* Always render video element but conditionally show it */}
+                <div className="relative w-full h-full">
                   <video
                     ref={videoRef}
                     autoPlay
                     playsInline
                     muted
                     className="w-full h-full object-cover"
+                    style={{ 
+                      width: '100%', 
+                      height: '100%',
+                      objectFit: 'cover',
+                      backgroundColor: '#000',
+                      display: cameraActive ? 'block' : 'none',
+                      opacity: cameraActive ? 1 : 0
+                    }}
                   />
-                ) : (
-                  <div className="flex items-center justify-center h-full">
+                  <canvas
+                    ref={canvasRef}
+                    className="absolute top-0 left-0 w-full h-full object-cover pointer-events-none"
+                    style={{ zIndex: 10, display: cameraActive ? 'block' : 'none' }}
+                  />
+                  
+                  {/* Pose detection indicator */}
+                  {poseDetected && cameraActive && (
+                    <div className="absolute top-4 right-4 flex items-center space-x-2">
+                      <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                      <span className="text-white text-xs font-medium">Pose Detected</span>
+                    </div>
+                  )}
+                  
+                  {/* Current posture indicator */}
+                  {currentPosture && cameraActive && (
+                    <div className="absolute bottom-4 left-4 bg-black bg-opacity-50 text-white px-3 py-1 rounded-md text-sm">
+                      Posture: {currentPosture}
+                    </div>
+                  )}
+                </div>
+                
+                {/* Show placeholder when camera is not active */}
+                {!cameraActive && (
+                  <div className="absolute inset-0 flex items-center justify-center">
                     <div className="text-center">
                       <Camera className="mx-auto h-12 w-12 text-gray-400" />
                       <h3 className="mt-2 text-sm font-medium text-gray-900">Camera Off</h3>
@@ -348,6 +860,21 @@ const LiveExercisePage: React.FC = () => {
                     {formatTime(sessionTime)}
                   </span>
                 </div>
+
+                {accuracy !== null && (
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <Activity className="h-5 w-5 text-gray-400 mr-2" />
+                      <span className="text-sm font-medium text-gray-700">Accuracy</span>
+                    </div>
+                    <span className={`text-2xl font-bold ${
+                      accuracy >= 80 ? 'text-green-600' : 
+                      accuracy >= 60 ? 'text-yellow-600' : 'text-red-600'
+                    }`}>
+                      {Math.round(accuracy)}%
+                    </span>
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -379,16 +906,36 @@ const LiveExercisePage: React.FC = () => {
                     Confidence: {Math.round(feedback.confidence * 100)}%
                   </div>
                 </div>
+              ) : poseDetected ? (
+                <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
+                  <div className="flex items-center">
+                    <CheckCircle className="h-5 w-5 text-blue-600 mr-2" />
+                    <span className="text-sm font-medium text-blue-800">
+                      Pose detected successfully
+                    </span>
+                  </div>
+                  <div className="mt-2 text-xs text-gray-500">
+                    Start your session to begin posture analysis
+                  </div>
+                </div>
               ) : (
                 <div className="text-center py-6">
                   <Activity className="mx-auto h-8 w-8 text-gray-400" />
                   <p className="mt-2 text-sm text-gray-500">
-                    Start your session to receive real-time feedback
+                    {cameraActive ? 'Position yourself in front of the camera' : 'Start your camera to receive real-time feedback'}
                   </p>
                 </div>
               )}
             </div>
           </div>
+
+          {/* Posture Guidance */}
+          <PostureGuidance
+            accuracy={accuracy}
+            currentPosture={currentPosture}
+            feedback={feedback ? [feedback.message] : []}
+            isRecording={isRecording}
+          />
 
           {/* Exercise Instructions */}
           {exercise && (

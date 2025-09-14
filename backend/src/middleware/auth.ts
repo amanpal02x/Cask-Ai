@@ -22,4 +22,7 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
   }
 };
 
+// Alias for backward compatibility
+export const authenticateToken = authMiddleware;
+
 
