@@ -37,8 +37,35 @@ export interface Exercise {
   targetMuscles: string[];
   difficulty: 'beginner' | 'intermediate' | 'advanced';
   duration: number; // in minutes
+  category: 'strength' | 'cardio' | 'flexibility' | 'balance';
+  equipment?: string[];
+  caloriesPerMinute?: number;
   videoUrl?: string;
   imageUrl?: string;
+  formGuidance?: {
+    correctForm: {
+      description: string;
+      keyPoints: string[];
+      commonMistakes: string[];
+      tips: string[];
+    };
+    visualGuide: {
+      referenceImage?: string;
+      referenceVideo?: string;
+      landmarks: Array<{
+        name: string;
+        position: string;
+        importance: 'critical' | 'important' | 'optional';
+      }>;
+    };
+    datasetInfo: {
+      source: string;
+      sampleCount: number;
+      accuracy: number;
+      lastUpdated: string;
+      version: string;
+    };
+  };
 }
 
 // Session Types

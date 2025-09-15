@@ -167,6 +167,63 @@ async analyzePose(sessionId: string, landmarks: number[][]): Promise<ApiResponse
     return response.data;
   }
 
+  // Enhanced Doctor-Patient Connection APIs
+  async getDoctors(): Promise<ApiResponse<any[]>> {
+    const response = await this.api.get('/patient-doctor/doctors');
+    return response.data;
+  }
+
+  async assignPatient(patientId: string, reason?: string): Promise<ApiResponse<any>> {
+    const response = await this.api.post('/patient-doctor/assign', { 
+      patientId, 
+      assignmentReason: reason 
+    });
+    return response.data;
+  }
+
+  async requestDoctorConnection(doctorId: string, reason?: string): Promise<ApiResponse<any>> {
+    const response = await this.api.post('/patient-doctor/request-connection', { 
+      doctorId, 
+      requestReason: reason 
+    });
+    return response.data;
+  }
+
+  async updateConnectionStatus(patientId: string, status: string): Promise<ApiResponse<any>> {
+    const response = await this.api.put(`/patient-doctor/patients/${patientId}/status`, { status });
+    return response.data;
+  }
+
+  async getMyProgress(): Promise<ApiResponse<any[]>> {
+    const response = await this.api.get('/patient-doctor/progress');
+    return response.data;
+  }
+
+  async getSuggestions(): Promise<ApiResponse<any[]>> {
+    const response = await this.api.get('/patient-doctor/suggestions');
+    return response.data;
+  }
+
+  async createSuggestion(suggestion: any): Promise<ApiResponse<any>> {
+    const response = await this.api.post('/patient-doctor/suggestions', suggestion);
+    return response.data;
+  }
+
+  async getPatientConnectionStatus(): Promise<ApiResponse<{
+    isConnected: boolean;
+    doctor: {
+      id: string;
+      name: string;
+      email: string;
+      specialization?: string;
+    } | null;
+    status: string | null;
+    connectionDate: string | null;
+  }>> {
+    const response = await this.api.get('/patient-doctor/connection-status');
+    return response.data;
+  }
+
   // Activity endpoints
   async getActivityFeed(options?: {
     limit?: number;

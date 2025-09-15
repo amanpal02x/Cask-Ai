@@ -4,7 +4,8 @@ import {
   getExercise, 
   createExercise, 
   updateExercise, 
-  deleteExercise 
+  deleteExercise,
+  seedExercises
 } from '../controllers/exerciseController';
 import { authMiddleware } from '../middleware/auth';
 
@@ -18,5 +19,6 @@ router.get('/:id', getExercise);
 router.post('/', createExercise);
 router.put('/:id', updateExercise);
 router.delete('/:id', deleteExercise);
+router.post('/seed', seedExercises);
 
 export default router;

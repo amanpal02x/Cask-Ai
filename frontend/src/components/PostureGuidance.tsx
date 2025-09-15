@@ -2,7 +2,7 @@ import React from 'react';
 import { CheckCircle, AlertTriangle, Info, Target } from 'lucide-react';
 
 interface PostureGuidanceProps {
-  accuracy: number | null;
+  accuracy: number | null | undefined;
   currentPosture: string;
   feedback: string[];
   isRecording: boolean;
@@ -77,7 +77,7 @@ const PostureGuidance: React.FC<PostureGuidanceProps> = ({
     );
   }
 
-  const accuracyInfo = accuracy ? getAccuracyLevel(accuracy) : null;
+  const accuracyInfo = accuracy !== null && accuracy !== undefined ? getAccuracyLevel(accuracy) : null;
   const postureTips = getPostureTips(currentPosture);
   const exerciseTips = getExerciseSpecificTips();
 
@@ -87,10 +87,10 @@ const PostureGuidance: React.FC<PostureGuidanceProps> = ({
         <h3 className="text-lg font-medium text-gray-900 mb-4">Posture Guidance</h3>
         
         {/* Accuracy Status */}
-        {accuracyInfo && accuracy !== null && (
+        {accuracyInfo && accuracy !== null && accuracy !== undefined && (
           <div className={`p-4 rounded-lg border ${accuracyInfo.bgColor} ${accuracyInfo.borderColor} mb-4`}>
             <div className="flex items-center">
-              {accuracy >= 70 ? (
+              {accuracy! >= 70 ? (
                 <CheckCircle className={`h-5 w-5 ${accuracyInfo.color} mr-2`} />
               ) : (
                 <AlertTriangle className={`h-5 w-5 ${accuracyInfo.color} mr-2`} />
@@ -100,7 +100,7 @@ const PostureGuidance: React.FC<PostureGuidanceProps> = ({
               </span>
             </div>
             <div className="mt-2 text-xs text-gray-600">
-              Current accuracy: {Math.round(accuracy)}%
+              Current accuracy: {Math.round(accuracy!)}%
             </div>
           </div>
         )}

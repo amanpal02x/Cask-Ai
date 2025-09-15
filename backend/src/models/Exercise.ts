@@ -25,6 +25,31 @@ export interface IExercise extends Document {
       threshold: number;
     };
   };
+  // Enhanced form guidance data
+  formGuidance: {
+    correctForm: {
+      description: string;
+      keyPoints: string[];
+      commonMistakes: string[];
+      tips: string[];
+    };
+    visualGuide: {
+      referenceImage?: string;
+      referenceVideo?: string;
+      landmarks: Array<{
+        name: string;
+        position: string;
+        importance: 'critical' | 'important' | 'optional';
+      }>;
+    };
+    datasetInfo: {
+      source: string;
+      sampleCount: number;
+      accuracy: number;
+      lastUpdated: Date;
+      version: string;
+    };
+  };
   createdBy: mongoose.Types.ObjectId; // doctor who created the exercise
   isActive: boolean;
   createdAt: Date;
@@ -63,6 +88,34 @@ const ExerciseSchema = new Schema<IExercise>(
         trigger: { type: String, required: true },
         direction: { type: String, enum: ['up', 'down'], required: true },
         threshold: { type: Number, required: true }
+      }
+    },
+    formGuidance: {
+      correctForm: {
+        description: { type: String, required: true },
+        keyPoints: [{ type: String, required: true }],
+        commonMistakes: [{ type: String, required: true }],
+        tips: [{ type: String, required: true }]
+      },
+      visualGuide: {
+        referenceImage: { type: String },
+        referenceVideo: { type: String },
+        landmarks: [{
+          name: { type: String, required: true },
+          position: { type: String, required: true },
+          importance: { 
+            type: String, 
+            enum: ['critical', 'important', 'optional'], 
+            required: true 
+          }
+        }]
+      },
+      datasetInfo: {
+        source: { type: String, required: true },
+        sampleCount: { type: Number, required: true },
+        accuracy: { type: Number, required: true },
+        lastUpdated: { type: Date, required: true },
+        version: { type: String, required: true }
       }
     },
     createdBy: { 

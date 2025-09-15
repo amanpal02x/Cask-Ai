@@ -13,6 +13,7 @@ import {
   Users,
   FileText
 } from 'lucide-react';
+import SidebarDoctorConnection from './SidebarDoctorConnection';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -82,6 +83,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </Link>
               );
             })}
+            
+            {/* Doctor Connection for Patients */}
+            {user?.role === 'patient' && (
+              <div className="mt-4">
+                <SidebarDoctorConnection userId={user.id} />
+              </div>
+            )}
           </nav>
         </div>
       </div>
@@ -110,6 +118,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </Link>
               );
             })}
+            
+            {/* Doctor Connection for Patients */}
+            {user?.role === 'patient' && (
+              <div className="mt-4">
+                <SidebarDoctorConnection userId={user.id} />
+              </div>
+            )}
           </nav>
         </div>
       </div>

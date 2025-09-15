@@ -3,6 +3,7 @@ import { ApiResponse } from "../types";
 import { analyzePose } from "../services/mlService";
 import ExerciseService from "../services/exerciseService";
 import SessionService from "../services/sessionService";
+import { ExerciseSeedService } from "../services/exerciseSeedService";
 
 // =======================
 // CRUD for Exercises
@@ -212,6 +213,29 @@ export const analyzeExercise = async (req: Request, res: Response) => {
       success: false, 
       message: "Failed to analyze exercise",
       error: err.message 
+    });
+  }
+};
+
+// =======================
+// Seed Exercises
+// =======================
+export const seedExercises = async (req: Request, res: Response) => {
+  try {
+    await ExerciseSeedService.seedExercises();
+    
+    const response: ApiResponse<null> = {
+      success: true,
+      data: null,
+      message: "Exercises seeded successfully",
+    };
+    res.json(response);
+  } catch (error) {
+    console.error("Error seeding exercises:", error);
+    res.status(500).json({
+      success: false,
+      data: null,
+      message: "Failed to seed exercises",
     });
   }
 };

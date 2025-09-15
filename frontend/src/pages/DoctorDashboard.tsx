@@ -16,6 +16,7 @@ import { useAuth } from '../hooks/useAuth';
 import { Patient, DashboardStats } from '../types';
 import apiService from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
+import DatasetManagement from '../components/DatasetManagement';
 
 const DoctorDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -405,6 +406,11 @@ const DoctorDashboard: React.FC = () => {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Dataset Management */}
+      <div className="mt-6">
+        <DatasetManagement />
       </div>
     </div>
   );

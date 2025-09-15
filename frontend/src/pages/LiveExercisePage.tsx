@@ -17,6 +17,8 @@ import { Exercise, RealTimeFeedback, ExerciseSession } from '../types';
 import apiService from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import PostureGuidance from '../components/PostureGuidance';
+import ExerciseFormGuidance from '../components/ExerciseFormGuidance';
+import ExerciseSelector from '../components/ExerciseSelector';
 import { Pose } from '@mediapipe/pose';
 import { Camera as MediaPipeCamera } from '@mediapipe/camera_utils';
 import { drawConnectors, drawLandmarks } from '@mediapipe/drawing_utils';
@@ -36,9 +38,10 @@ const LiveExercisePage: React.FC = () => {
   const [sessionTime, setSessionTime] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [accuracy, setAccuracy] = useState<number | null>(null);
+  const [accuracy, setAccuracy] = useState<number | undefined>(undefined);
   const [currentPosture, setCurrentPosture] = useState<string>('');
   const [poseDetected, setPoseDetected] = useState(false);
+  const [showExerciseSelector, setShowExerciseSelector] = useState(false);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -76,6 +79,7 @@ const LiveExercisePage: React.FC = () => {
           ],
           difficulty: 'beginner',
           duration: 10,
+          category: 'strength',
           videoUrl: '',
           imageUrl: ''
         });
@@ -575,10 +579,15 @@ const LiveExercisePage: React.FC = () => {
     
     setCameraActive(false);
     setPoseDetected(false);
-    setAccuracy(null);
+    setAccuracy(undefined);
     setCurrentPosture('');
     
     console.log('Camera stopped successfully');
+  };
+
+  const handleExerciseSelect = (selectedExercise: Exercise) => {
+    setExercise(selectedExercise);
+    setShowExerciseSelector(false);
   };
 
   const startSession = async () => {
@@ -782,6 +791,71 @@ const LiveExercisePage: React.FC = () => {
 
         {/* Controls and Feedback */}
         <div className="space-y-6">
+          {/* Exercise Selection */}
+          {!isRecording && (
+            <div className="bg-white shadow rounded-lg">
+              <div className="px-4 py-5 sm:p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-medium text-gray-900">Exercise Selection</h3>
+                  <button
+                    onClick={() => setShowExerciseSelector(!showExerciseSelector)}
+                    className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
+                  >
+                    {exercise ? 'Change Exercise' : 'Select Exercise'}
+                  </button>
+                </div>
+                
+                {exercise ? (
+                  <div className="border rounded-lg p-4 bg-gray-50">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-900">{exercise.name}</h4>
+                        <p className="text-sm text-gray-600">{exercise.description}</p>
+                        <div className="mt-2 flex items-center space-x-4 text-xs text-gray-500">
+                          <span className="capitalize">{exercise.difficulty}</span>
+                          <span>{exercise.duration} min</span>
+                          <span>{exercise.targetMuscles.join(', ')}</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-6">
+                    <Target className="mx-auto h-8 w-8 text-gray-400" />
+                    <p className="mt-2 text-sm text-gray-500">
+                      Select an exercise to begin your session
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {/* Exercise Selector Modal */}
+          {showExerciseSelector && (
+            <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+              <div className="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
+                <div className="mt-3">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-medium text-gray-900">Select Exercise</h3>
+                    <button
+                      onClick={() => setShowExerciseSelector(false)}
+                      className="text-gray-400 hover:text-gray-600"
+                    >
+                      <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
+                  </div>
+                  <ExerciseSelector
+                    onExerciseSelect={handleExerciseSelect}
+                    selectedExerciseId={exercise?.id}
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Session Controls */}
           <div className="bg-white shadow rounded-lg">
             <div className="px-4 py-5 sm:p-6">
@@ -791,7 +865,7 @@ const LiveExercisePage: React.FC = () => {
                 {!isRecording ? (
                   <button
                     onClick={startSession}
-                    disabled={!cameraActive}
+                    disabled={!cameraActive || !exercise}
                     className="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Play className="h-4 w-4 mr-2" />
@@ -868,10 +942,10 @@ const LiveExercisePage: React.FC = () => {
                       <span className="text-sm font-medium text-gray-700">Accuracy</span>
                     </div>
                     <span className={`text-2xl font-bold ${
-                      accuracy >= 80 ? 'text-green-600' : 
-                      accuracy >= 60 ? 'text-yellow-600' : 'text-red-600'
+                      accuracy !== undefined && accuracy >= 80 ? 'text-green-600' : 
+                      accuracy !== undefined && accuracy >= 60 ? 'text-yellow-600' : 'text-red-600'
                     }`}>
-                      {Math.round(accuracy)}%
+                      {accuracy !== undefined ? Math.round(accuracy) : 0}%
                     </span>
                   </div>
                 )}
@@ -928,6 +1002,13 @@ const LiveExercisePage: React.FC = () => {
               )}
             </div>
           </div>
+
+          {/* Exercise Form Guidance */}
+          <ExerciseFormGuidance
+            exercise={exercise}
+            isSessionActive={isRecording}
+            currentAccuracy={accuracy}
+          />
 
           {/* Posture Guidance */}
           <PostureGuidance

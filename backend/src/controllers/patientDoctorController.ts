@@ -147,6 +147,180 @@ export const assignPatient = async (req: Request, res: Response) => {
   }
 };
 
+export const requestDoctorConnection = async (req: Request, res: Response) => {
+  try {
+    const patientId = (req as any).user?.id;
+    const { doctorId, requestReason } = req.body;
+    
+    if (!patientId) {
+      const response: ApiResponse<null> = {
+        success: false,
+        data: null,
+        message: 'User not authenticated'
+      };
+      return res.status(401).json(response);
+    }
+
+    if (!doctorId) {
+      const response: ApiResponse<null> = {
+        success: false,
+        data: null,
+        message: 'Doctor ID is required'
+      };
+      return res.status(400).json(response);
+    }
+
+    // Check if doctor exists
+    const doctor = await User.findById(doctorId);
+    if (!doctor || doctor.role !== 'doctor') {
+      const response: ApiResponse<null> = {
+        success: false,
+        data: null,
+        message: 'Doctor not found'
+      };
+      return res.status(404).json(response);
+    }
+
+    // Check if relationship already exists
+    const existingRelation = await PatientDoctor.findOne({
+      patientId: patientId,
+      doctorId: doctorId
+    });
+
+    if (existingRelation) {
+      const response: ApiResponse<null> = {
+        success: false,
+        data: null,
+        message: 'Connection request already exists or you are already connected'
+      };
+      return res.status(400).json(response);
+    }
+
+    // Create new relationship with pending status
+    const newRelation = new PatientDoctor({
+      patientId: patientId,
+      doctorId: doctorId,
+      assignedBy: patientId,
+      assignmentReason: requestReason || 'Patient requested connection',
+      status: 'pending'
+    });
+
+    await newRelation.save();
+
+    // Send notification to doctor
+    await NotificationService.createNotification({
+      recipientId: doctorId,
+      senderId: patientId,
+      type: 'info',
+      title: 'New Connection Request',
+      message: `A patient has requested to connect with you for exercise guidance.`,
+      data: {
+        priority: 'medium',
+        category: 'connection_request'
+      }
+    });
+    
+    const response: ApiResponse<{ success: boolean }> = {
+      success: true,
+      data: { success: true },
+      message: 'Connection request sent successfully'
+    };
+    
+    res.json(response);
+  } catch (error) {
+    console.error('Error requesting doctor connection:', error);
+    const response: ApiResponse<null> = {
+      success: false,
+      data: null,
+      message: 'Failed to send connection request'
+    };
+    res.status(500).json(response);
+  }
+};
+
+export const updateConnectionStatus = async (req: Request, res: Response) => {
+  try {
+    const doctorId = (req as any).user?.id;
+    const { patientId } = req.params;
+    const { status } = req.body;
+    
+    if (!doctorId) {
+      const response: ApiResponse<null> = {
+        success: false,
+        data: null,
+        message: 'User not authenticated'
+      };
+      return res.status(401).json(response);
+    }
+
+    if (!['pending', 'active', 'suspended', 'terminated'].includes(status)) {
+      const response: ApiResponse<null> = {
+        success: false,
+        data: null,
+        message: 'Invalid status'
+      };
+      return res.status(400).json(response);
+    }
+
+    // Find the relationship
+    const relation = await PatientDoctor.findOne({
+      patientId: patientId,
+      doctorId: doctorId
+    });
+
+    if (!relation) {
+      const response: ApiResponse<null> = {
+        success: false,
+        data: null,
+        message: 'Connection not found'
+      };
+      return res.status(404).json(response);
+    }
+
+    // Update status
+    relation.status = status;
+    if (status === 'active') {
+      relation.startedAt = new Date();
+    }
+    await relation.save();
+
+    // Send notification to patient
+    const notificationMessage = status === 'active' 
+      ? 'Your connection request has been approved! You can now communicate with your doctor.'
+      : status === 'suspended'
+      ? 'Your connection has been suspended. Please contact your doctor for more information.'
+      : 'Your connection has been terminated.';
+
+    await NotificationService.createNotification({
+      recipientId: patientId,
+      senderId: doctorId,
+      type: 'info',
+      title: `Connection ${status === 'active' ? 'Approved' : status === 'suspended' ? 'Suspended' : 'Terminated'}`,
+      message: notificationMessage,
+      data: {
+        priority: 'high',
+        category: 'connection_update'
+      }
+    });
+    
+    const response: ApiResponse<{ success: boolean }> = {
+      success: true,
+      data: { success: true },
+      message: `Connection ${status} successfully`
+    };
+    
+    res.json(response);
+  } catch (error) {
+    console.error('Error updating connection status:', error);
+    const response: ApiResponse<null> = {
+      success: false,
+      data: null,
+      message: 'Failed to update connection status'
+    };
+    res.status(500).json(response);
+  }
+};
+
 export const getPatientProgress = async (req: Request, res: Response) => {
   try {
     const doctorId = (req as any).user?.id;
@@ -465,6 +639,310 @@ export const removePatient = async (req: Request, res: Response) => {
       success: false,
       data: null,
       message: 'Failed to remove patient'
+    };
+    res.status(500).json(response);
+  }
+};
+
+// Enhanced endpoints for the new functionality
+export const getDoctors = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?.id;
+    
+    if (!userId) {
+      const response: ApiResponse<null> = {
+        success: false,
+        data: null,
+        message: 'User not authenticated'
+      };
+      return res.status(401).json(response);
+    }
+
+    // Get all doctors available for connection
+    const doctors = await User.find({ 
+      role: 'doctor',
+      isActive: true
+    }).select('name email role avatar specialization licenseNumber');
+
+    const response: ApiResponse<typeof doctors> = {
+      success: true,
+      data: doctors,
+      message: 'Doctors retrieved successfully'
+    };
+    res.json(response);
+  } catch (error) {
+    console.error('Error fetching doctors:', error);
+    const response: ApiResponse<null> = {
+      success: false,
+      data: null,
+      message: 'Failed to fetch doctors'
+    };
+    res.status(500).json(response);
+  }
+};
+
+export const getAllPatientProgress = async (req: Request, res: Response) => {
+  try {
+    const doctorId = (req as any).user?.id;
+    
+    if (!doctorId) {
+      const response: ApiResponse<null> = {
+        success: false,
+        data: null,
+        message: 'User not authenticated'
+      };
+      return res.status(401).json(response);
+    }
+
+    // Get all patients assigned to this doctor with their progress
+    const relationships = await PatientDoctor.find({ 
+      doctorId: doctorId,
+      status: 'active'
+    }).populate('patientId', 'name email');
+
+    const progressData = relationships.map(rel => ({
+      id: rel._id.toString(),
+      patientId: rel.patientId._id.toString(),
+      patientName: (rel.patientId as any).name,
+      totalSessions: rel.totalSessions || 0,
+      averageScore: rel.averageScore || 0,
+      lastSessionDate: rel.lastInteraction?.toISOString() || new Date().toISOString(),
+      improvementRate: Math.random() * 20 + 5, // Mock data - would be calculated from actual progress
+      currentStreak: Math.floor(Math.random() * 10) + 1, // Mock data
+      weeklyGoal: rel.patientSettings?.weeklyTarget || 5,
+      weeklyProgress: Math.floor(Math.random() * 7) // Mock data
+    }));
+    
+    const response: ApiResponse<typeof progressData> = {
+      success: true,
+      data: progressData,
+      message: 'Patient progress retrieved successfully'
+    };
+    
+    res.json(response);
+  } catch (error) {
+    console.error('Error fetching patient progress:', error);
+    const response: ApiResponse<null> = {
+      success: false,
+      data: null,
+      message: 'Failed to fetch patient progress'
+    };
+    res.status(500).json(response);
+  }
+};
+
+export const getSuggestions = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?.id;
+    
+    if (!userId) {
+      const response: ApiResponse<null> = {
+        success: false,
+        data: null,
+        message: 'User not authenticated'
+      };
+      return res.status(401).json(response);
+    }
+
+    // Get all suggestions for this user (as doctor or patient)
+    const user = await User.findById(userId);
+    if (!user) {
+      const response: ApiResponse<null> = {
+        success: false,
+        data: null,
+        message: 'User not found'
+      };
+      return res.status(404).json(response);
+    }
+
+    // Mock suggestions data - in real implementation, this would come from a suggestions collection
+    const suggestions = [
+      {
+        id: '1',
+        doctorId: 'doctor1',
+        doctorName: 'Dr. Smith',
+        patientId: 'patient1',
+        patientName: 'John Doe',
+        suggestion: 'Try to maintain better posture during squats. Keep your chest up and back straight.',
+        type: 'form',
+        priority: 'high',
+        status: 'pending',
+        createdAt: new Date().toISOString()
+      },
+      {
+        id: '2',
+        doctorId: 'doctor1',
+        doctorName: 'Dr. Smith',
+        patientId: 'patient1',
+        patientName: 'John Doe',
+        suggestion: 'Consider increasing your exercise frequency to 4 times per week for better results.',
+        type: 'schedule',
+        priority: 'medium',
+        status: 'read',
+        createdAt: new Date(Date.now() - 86400000).toISOString()
+      }
+    ];
+
+    // Filter suggestions based on user role
+    const filteredSuggestions = user.role === 'doctor' 
+      ? suggestions.filter(s => s.doctorId === userId)
+      : suggestions.filter(s => s.patientId === userId);
+    
+    const response: ApiResponse<typeof filteredSuggestions> = {
+      success: true,
+      data: filteredSuggestions,
+      message: 'Suggestions retrieved successfully'
+    };
+    
+    res.json(response);
+  } catch (error) {
+    console.error('Error fetching suggestions:', error);
+    const response: ApiResponse<null> = {
+      success: false,
+      data: null,
+      message: 'Failed to fetch suggestions'
+    };
+    res.status(500).json(response);
+  }
+};
+
+export const createSuggestion = async (req: Request, res: Response) => {
+  try {
+    const doctorId = (req as any).user?.id;
+    const { patientId, suggestion, type, priority } = req.body;
+    
+    if (!doctorId) {
+      const response: ApiResponse<null> = {
+        success: false,
+        data: null,
+        message: 'User not authenticated'
+      };
+      return res.status(401).json(response);
+    }
+
+    if (!patientId || !suggestion) {
+      const response: ApiResponse<null> = {
+        success: false,
+        data: null,
+        message: 'Patient ID and suggestion are required'
+      };
+      return res.status(400).json(response);
+    }
+
+    // Verify doctor-patient relationship
+    const relation = await PatientDoctor.findOne({
+      doctorId: doctorId,
+      patientId: patientId,
+      status: 'active'
+    });
+
+    if (!relation) {
+      const response: ApiResponse<null> = {
+        success: false,
+        data: null,
+        message: 'Patient not found or not assigned to you'
+      };
+      return res.status(404).json(response);
+    }
+
+    // Get doctor and patient names
+    const doctor = await User.findById(doctorId);
+    const patient = await User.findById(patientId);
+
+    // Create suggestion (in real implementation, this would be saved to a suggestions collection)
+    const newSuggestion = {
+      id: Date.now().toString(),
+      doctorId: doctorId,
+      doctorName: doctor?.name || 'Unknown Doctor',
+      patientId: patientId,
+      patientName: patient?.name || 'Unknown Patient',
+      suggestion: suggestion,
+      type: type || 'general',
+      priority: priority || 'medium',
+      status: 'pending',
+      createdAt: new Date().toISOString()
+    };
+
+    // Send notification to patient
+    await NotificationService.createNotification({
+      recipientId: patientId,
+      senderId: doctorId,
+      type: 'info',
+      title: 'New Suggestion',
+      message: suggestion,
+      data: {
+        priority: priority || 'medium',
+        category: 'suggestion',
+        metadata: { suggestionId: newSuggestion.id, type: type || 'general' }
+      }
+    });
+
+    // Update last interaction
+    relation.lastInteraction = new Date();
+    await relation.save();
+    
+    const response: ApiResponse<typeof newSuggestion> = {
+      success: true,
+      data: newSuggestion,
+      message: 'Suggestion created successfully'
+    };
+    
+    res.json(response);
+  } catch (error) {
+    console.error('Error creating suggestion:', error);
+    const response: ApiResponse<null> = {
+      success: false,
+      data: null,
+      message: 'Failed to create suggestion'
+    };
+    res.status(500).json(response);
+  }
+};
+
+export const getPatientConnectionStatus = async (req: Request, res: Response) => {
+  try {
+    const patientId = (req as any).user?.id;
+    
+    if (!patientId) {
+      const response: ApiResponse<null> = {
+        success: false,
+        data: null,
+        message: 'User not authenticated'
+      };
+      return res.status(401).json(response);
+    }
+
+    // Check if patient has an active connection with any doctor
+    const relation = await PatientDoctor.findOne({
+      patientId: patientId,
+      status: { $in: ['active', 'pending'] }
+    }).populate('doctorId', 'name email specialization');
+
+    const connectionStatus = {
+      isConnected: !!relation,
+      doctor: relation ? {
+        id: relation.doctorId._id.toString(),
+        name: (relation.doctorId as any).name,
+        email: (relation.doctorId as any).email,
+        specialization: (relation.doctorId as any).specialization
+      } : null,
+      status: relation?.status || null,
+      connectionDate: relation?.startedAt?.toISOString() || null
+    };
+    
+    const response: ApiResponse<typeof connectionStatus> = {
+      success: true,
+      data: connectionStatus,
+      message: 'Connection status retrieved successfully'
+    };
+    
+    res.json(response);
+  } catch (error) {
+    console.error('Error fetching connection status:', error);
+    const response: ApiResponse<null> = {
+      success: false,
+      data: null,
+      message: 'Failed to fetch connection status'
     };
     res.status(500).json(response);
   }

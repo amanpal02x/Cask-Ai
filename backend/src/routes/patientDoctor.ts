@@ -2,11 +2,18 @@ import express from 'express';
 import {
   getPatients,
   assignPatient,
+  requestDoctorConnection,
+  updateConnectionStatus,
   getPatientProgress,
   sendRecommendation,
   updatePatientSettings,
   getPatientDetails,
-  removePatient
+  removePatient,
+  getDoctors,
+  getAllPatientProgress,
+  getSuggestions,
+  createSuggestion,
+  getPatientConnectionStatus
 } from '../controllers/patientDoctorController';
 import { authMiddleware } from '../middleware/auth';
 
@@ -20,6 +27,12 @@ router.get('/patients', getPatients);
 
 // Assign patient to doctor
 router.post('/assign', assignPatient);
+
+// Patient requests connection to doctor
+router.post('/request-connection', requestDoctorConnection);
+
+// Update connection status (approve/deny/suspend)
+router.put('/patients/:patientId/status', updateConnectionStatus);
 
 // Get patient progress
 router.get('/patients/:patientId/progress', getPatientProgress);
@@ -35,5 +48,12 @@ router.put('/patients/:patientId/settings', updatePatientSettings);
 
 // Remove patient assignment
 router.delete('/patients/:patientId', removePatient);
+
+// Enhanced endpoints
+router.get('/doctors', getDoctors);
+router.get('/progress', getAllPatientProgress);
+router.get('/suggestions', getSuggestions);
+router.post('/suggestions', createSuggestion);
+router.get('/connection-status', getPatientConnectionStatus);
 
 export default router;

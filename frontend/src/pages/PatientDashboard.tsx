@@ -315,6 +315,7 @@ const PatientDashboard: React.FC = () => {
           </div>
         </div>
       </div>
+
     </div>
   );
 };
