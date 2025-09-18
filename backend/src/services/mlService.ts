@@ -1,9 +1,11 @@
 import axios from "axios";
 
+const ML_BACKEND_URL = process.env.ML_BACKEND_URL || "http://localhost:8001";
+
 export const analyzePose = async (landmarks: any) => {
   try {
     // Try to connect to Python ML backend
-    const res = await axios.post("http://localhost:8000/predict", { landmarks });
+    const res = await axios.post(`${ML_BACKEND_URL}/predict`, { landmarks });
     return res.data;
   } catch (err) {
     console.log("ML backend not available, using mock analysis");

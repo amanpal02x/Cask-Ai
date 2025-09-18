@@ -1,10 +1,8 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   UserPlus, 
   Users, 
   CheckCircle,
-  Clock,
-  MessageSquare,
   Wifi,
   WifiOff,
   Circle,
@@ -42,9 +40,15 @@ const SidebarDoctorConnection: React.FC<SidebarDoctorConnectionProps> = ({ userI
   const [onlineDoctors, setOnlineDoctors] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [showConnectModal, setShowConnectModal] = useState(false);
-  const [showOnlineModal, setShowOnlineModal] = useState(false);
+  const [showOnlineModal, setShowOnlineModal] = useState(true);
   const [showDisconnectModal, setShowDisconnectModal] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
+  const [visibleDoctorsCount, setVisibleDoctorsCount] = useState(4);
+  const [visibleOnlineCount, setVisibleOnlineCount] = useState(4);
+  const [error, setError] = useState<string | null>(null);
+  const isFetchingRef = useRef(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+  const debounceTimerRef = useRef<number | null>(null);
 
   // WebSocket connection for real-time updates
   const { isConnected: wsConnected, onlineUsers, updateStatus } = useWebSocket({
@@ -67,49 +71,91 @@ const SidebarDoctorConnection: React.FC<SidebarDoctorConnectionProps> = ({ userI
         updateStatus(false);
       }
     };
-  }, [user?.id]);
+  }, [user?.id, updateStatus]);
 
   useEffect(() => {
     // Listen for WebSocket notifications
     const handleNotification = (event: CustomEvent) => {
       const notification = event.detail;
       if (notification.type === 'connection_update') {
-        fetchConnectionStatus();
+        // Debounce refreshes to avoid bursts
+        if (debounceTimerRef.current) {
+          window.clearTimeout(debounceTimerRef.current);
+        }
+        debounceTimerRef.current = window.setTimeout(() => {
+          fetchConnectionStatus();
+        }, 500);
       }
     };
 
     window.addEventListener('websocket-notification', handleNotification as EventListener);
     return () => {
+      if (debounceTimerRef.current) {
+        window.clearTimeout(debounceTimerRef.current);
+      }
       window.removeEventListener('websocket-notification', handleNotification as EventListener);
     };
   }, []);
 
+  useEffect(() => {
+    // Reset visible counts when datasets change
+    setVisibleDoctorsCount(4);
+  }, [doctors]);
+
+  useEffect(() => {
+    setVisibleOnlineCount(4);
+  }, [onlineDoctors]);
+
+  const handleScrollLoadMore = (
+    event: React.UIEvent<HTMLDivElement>,
+    type: 'doctors' | 'online'
+  ) => {
+    const el = event.currentTarget;
+    const nearBottom = el.scrollTop + el.clientHeight >= el.scrollHeight - 8;
+    if (!nearBottom) return;
+    if (type === 'doctors') {
+      setVisibleDoctorsCount((count) => Math.min(count + 4, doctors.length));
+    } else {
+      setVisibleOnlineCount((count) => Math.min(count + 4, onlineDoctors.length));
+    }
+  };
+
   const fetchConnectionStatus = async () => {
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
     try {
       setLoading(true);
+      setError(null);
+      // Cancel any in-flight request
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+      abortControllerRef.current = new AbortController();
+
       const response = await apiService.getPatientConnectionStatus();
       if (response.success) {
         setConnectionStatus(response.data!);
-        
-        // Fetch online doctors if not connected
-        if (!response.data!.isConnected) {
-          const [doctorsResponse, onlineDoctorsResponse] = await Promise.all([
-            apiService.getDoctors(),
-            apiService.getOnlineDoctors()
-          ]);
-          
-          if (doctorsResponse.success) {
-            setDoctors(doctorsResponse.data || []);
-          }
-          if (onlineDoctorsResponse.success) {
-            setOnlineDoctors(onlineDoctorsResponse.data || []);
-          }
+        // Always fetch doctors and online status so options are always available
+        const [doctorsResponse, onlineDoctorsResponse] = await Promise.all([
+          apiService.getDoctors(),
+          apiService.getOnlineDoctors()
+        ]);
+
+        if (doctorsResponse.success) {
+          setDoctors(doctorsResponse.data || []);
         }
+        if (onlineDoctorsResponse.success) {
+          setOnlineDoctors(onlineDoctorsResponse.data || []);
+        }
+      } else {
+        setError('Failed to load doctor connection data');
       }
     } catch (error) {
       console.error('Failed to fetch connection status:', error);
+      setError('Unable to reach server. Please try again.');
     } finally {
       setLoading(false);
+      isFetchingRef.current = false;
     }
   };
 
@@ -122,7 +168,15 @@ const SidebarDoctorConnection: React.FC<SidebarDoctorConnectionProps> = ({ userI
         setShowOnlineModal(false);
       }
     } catch (error) {
+      // Surface backend-provided message when available (e.g., 400 existing request)
+      const message = (error as any)?.response?.data?.message || 'Failed to connect to doctor';
       console.error('Failed to connect to doctor:', error);
+      try {
+        // eslint-disable-next-line no-alert
+        window.alert(message);
+      } catch {}
+      // Refresh status in case a pending/active connection already exists
+      fetchConnectionStatus();
     }
   };
 
@@ -214,6 +268,25 @@ const SidebarDoctorConnection: React.FC<SidebarDoctorConnectionProps> = ({ userI
     );
   }
 
+  if (error) {
+    return (
+      <div className="px-3 py-2">
+        <div className="bg-red-50 border border-red-200 rounded p-3 text-xs text-red-700 flex items-start">
+          <AlertCircle className="h-4 w-4 mr-2 mt-0.5" />
+          <div className="flex-1">
+            <p className="mb-2">{error}</p>
+            <button
+              onClick={fetchConnectionStatus}
+              className="inline-flex items-center px-2 py-1 rounded bg-red-600 text-white hover:bg-red-700"
+            >
+              Retry
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   // Show connected doctor status
   if (!disconnecting && connectionStatus?.isConnected && connectionStatus.doctor && connectionStatus.status !== 'terminated') {
     const doctor = connectionStatus.doctor;
@@ -254,6 +327,21 @@ const SidebarDoctorConnection: React.FC<SidebarDoctorConnectionProps> = ({ userI
             <div className="mt-2 flex items-center text-xs text-yellow-700 bg-yellow-100 rounded p-2">
               <AlertCircle className="h-3 w-3 mr-1" />
               Waiting for doctor approval
+              <button
+                className="ml-auto text-xs text-red-600 hover:text-red-700 underline"
+                onClick={async () => {
+                  try {
+                    const response = await apiService.cancelConnectionRequest();
+                    if (response.success) {
+                      fetchConnectionStatus();
+                    }
+                  } catch (e) {
+                    console.error('Failed to cancel request', e);
+                  }
+                }}
+              >
+                Cancel request
+              </button>
             </div>
           )}
 
@@ -303,73 +391,39 @@ const SidebarDoctorConnection: React.FC<SidebarDoctorConnectionProps> = ({ userI
         </p>
 
         <div className="space-y-2">
-          {onlineDoctors.length > 0 && (
-            <div className="bg-white rounded p-2 border border-green-200">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center">
-                  <Wifi className="h-3 w-3 text-green-600 mr-1" />
-                  <span className="text-xs font-medium text-green-800">
-                    {onlineDoctors.length} doctor{onlineDoctors.length > 1 ? 's' : ''} online
-                  </span>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <button
-                    onClick={() => setShowOnlineModal(true)}
-                    className="text-xs text-green-600 hover:text-green-800 font-medium"
-                  >
-                    View online
-                  </button>
-                  <button
-                    onClick={() => setShowConnectModal(true)}
-                    className="text-xs text-blue-600 hover:text-blue-800 font-medium"
-                  >
-                    Doctor list
-                  </button>
-                </div>
+          <div className="bg-white rounded p-2 border">
+            <div className="flex items-center justify-between">
+              <div />
+              <div className="flex items-center space-x-3">
+                <button
+                  onClick={() => {
+                    setShowOnlineModal((prev) => {
+                      const next = !prev;
+                      if (next) setShowConnectModal(false);
+                      return next;
+                    });
+                  }}
+                  className="text-xs text-green-600 hover:text-green-800 font-medium"
+                >
+                  View online
+                </button>
+                <button
+                  onClick={() => {
+                    setShowConnectModal((prev) => {
+                      const next = !prev;
+                      if (next) setShowOnlineModal(false);
+                      return next;
+                    });
+                  }}
+                  className="text-xs text-blue-600 hover:text-blue-800 font-medium"
+                >
+                  Doctor list ({doctors.length})
+                </button>
               </div>
             </div>
-          )}
+          </div>
 
-          {doctors.length > 0 && (
-            <div className="space-y-1">
-              {doctors.slice(0, 2).map((doctor) => {
-                const isOnline = onlineDoctors.some(online => online.id === doctor.id);
-                return (
-                  <div key={doctor.id} className="flex items-center justify-between bg-white rounded p-2 border">
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center">
-                        <p className="text-xs font-medium text-gray-900 truncate">
-                          {doctor.name}
-                        </p>
-                        {isOnline && (
-                          <div className="ml-1 flex items-center text-green-600">
-                            <Wifi className="h-2 w-2" />
-                          </div>
-                        )}
-                      </div>
-                      <p className="text-xs text-gray-500 truncate">
-                        {doctor.specialization || 'General Practice'}
-                      </p>
-                    </div>
-                    <button
-                      onClick={() => handleConnectDoctor(doctor.id)}
-                      className="ml-2 inline-flex items-center px-2 py-1 border border-transparent text-xs font-medium rounded text-white bg-blue-600 hover:bg-blue-700"
-                    >
-                      <UserPlus className="h-3 w-3" />
-                    </button>
-                  </div>
-                );
-              })}
-              
-              {/* Always offer full doctor list entry point below */}
-              <button
-                onClick={() => setShowConnectModal(true)}
-                className="w-full text-xs text-blue-600 hover:text-blue-800 font-medium"
-              >
-                Doctor list ({doctors.length})
-              </button>
-            </div>
-          )}
+          {/* Inline doctor list removed; list now shown only when clicking "Doctor list" */}
         </div>
       </div>
 
@@ -381,17 +435,16 @@ const SidebarDoctorConnection: React.FC<SidebarDoctorConnectionProps> = ({ userI
             <h3 className="text-sm font-medium text-gray-900">All Doctors</h3>
             <button onClick={() => setShowConnectModal(false)} className="ml-auto text-xs text-gray-500 hover:text-gray-700">Hide</button>
           </div>
-          <div className="p-0">
+          <div className="p-0 max-h-64 overflow-y-auto no-scrollbar" onScroll={(e) => handleScrollLoadMore(e, 'doctors')}>
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-50 sticky top-0 z-10">
                 <tr>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                   <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-100">
-                {doctors.map((doctor) => {
-                  const isOnline = onlineDoctors.some(online => online.id === doctor.id);
+                {doctors.slice(0, visibleDoctorsCount).map((doctor) => {
                   return (
                     <tr key={doctor.id} className="hover:bg-gray-50">
                       <td className="px-4 py-2 text-sm text-gray-900 font-medium truncate">{doctor.name}</td>
@@ -424,16 +477,16 @@ const SidebarDoctorConnection: React.FC<SidebarDoctorConnectionProps> = ({ userI
             <h3 className="text-sm font-medium text-gray-900">Online Doctors</h3>
             <button onClick={() => setShowOnlineModal(false)} className="ml-auto text-xs text-gray-500 hover:text-gray-700">Hide</button>
           </div>
-          <div className="p-0">
+          <div className="p-0 max-h-64 overflow-y-auto no-scrollbar" onScroll={(e) => handleScrollLoadMore(e, 'online')}>
             <table className="min-w-full divide-y divide-gray-200">
-              <thead className="bg-gray-50">
+              <thead className="bg-gray-50 sticky top-0 z-10">
                 <tr>
                   <th className="px-4 py-2 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Name</th>
                   <th className="px-4 py-2 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">Action</th>
                 </tr>
               </thead>
               <tbody className="bg-white divide-y divide-gray-100">
-                {onlineDoctors.map((doctor) => (
+                {onlineDoctors.slice(0, visibleOnlineCount).map((doctor) => (
                   <tr key={doctor.id} className="hover:bg-gray-50">
                     <td className="px-4 py-2 text-sm text-gray-900 font-medium truncate">{doctor.name}</td>
                     <td className="px-4 py-2 text-right">

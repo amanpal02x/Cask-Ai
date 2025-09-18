@@ -116,12 +116,12 @@ class ApiService {
   }
 
   // Pose Analysis with ML backend
-async analyzePose(sessionId: string, landmarks: number[][]): Promise<ApiResponse<{
+  async analyzePose(sessionId: string, landmarks: number[][]): Promise<ApiResponse<{
   accuracy: number;
   feedback: string[];
   repCount?: number;
 }>> {
-  const response = await this.api.post(`/sessions/${sessionId}/analyze-pose`, {
+  const response = await this.api.post(`/sessions/${sessionId}/analyze`, {
     landmarks,
   });
   return response.data;
@@ -196,6 +196,11 @@ async analyzePose(sessionId: string, landmarks: number[][]): Promise<ApiResponse
 
   async disconnectFromDoctor(): Promise<ApiResponse<any>> {
     const response = await this.api.post('/doctor/disconnect');
+    return response.data;
+  }
+
+  async cancelConnectionRequest(): Promise<ApiResponse<any>> {
+    const response = await this.api.post('/doctor/cancel-connection');
     return response.data;
   }
 

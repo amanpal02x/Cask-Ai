@@ -181,10 +181,11 @@ export const requestDoctorConnection = async (req: Request, res: Response) => {
       return res.status(404).json(response);
     }
 
-    // Check if relationship already exists
+    // Block only if already active or pending with the SAME doctor
     const existingRelation = await PatientDoctor.findOne({
       patientId: patientId,
-      doctorId: doctorId
+      doctorId: doctorId,
+      status: { $in: ['active', 'pending'] }
     });
 
     if (existingRelation) {
@@ -196,16 +197,26 @@ export const requestDoctorConnection = async (req: Request, res: Response) => {
       return res.status(400).json(response);
     }
 
-    // Create new relationship with pending status
-    const newRelation = new PatientDoctor({
-      patientId: patientId,
-      doctorId: doctorId,
-      assignedBy: patientId,
-      assignmentReason: requestReason || 'Patient requested connection',
-      status: 'pending'
-    });
+    // If patient has a pending request with a DIFFERENT doctor, cancel it automatically
+    await PatientDoctor.updateMany(
+      { patientId: patientId, status: 'pending', doctorId: { $ne: doctorId } },
+      { $set: { status: 'terminated', endedAt: new Date() } }
+    );
 
-    await newRelation.save();
+    // Create or revive relationship with pending status (handles unique index)
+    const newRelation = await PatientDoctor.findOneAndUpdate(
+      { patientId: patientId, doctorId: doctorId },
+      {
+        $set: {
+          assignedBy: patientId,
+          assignmentReason: requestReason || 'Patient requested connection',
+          status: 'pending',
+          startedAt: new Date(),
+          endedAt: undefined
+        }
+      },
+      { new: true, upsert: true, setDefaultsOnInsert: true }
+    );
 
     // Send notification to doctor
     await NotificationService.createNotification({
@@ -233,6 +244,52 @@ export const requestDoctorConnection = async (req: Request, res: Response) => {
       success: false,
       data: null,
       message: 'Failed to send connection request'
+    };
+    res.status(500).json(response);
+  }
+};
+
+export const cancelConnectionRequest = async (req: Request, res: Response) => {
+  try {
+    const patientId = (req as any).user?.id;
+
+    if (!patientId) {
+      const response: ApiResponse<null> = {
+        success: false,
+        data: null,
+        message: 'User not authenticated'
+      };
+      return res.status(401).json(response);
+    }
+
+    const relation = await PatientDoctor.findOne({
+      patientId,
+      status: 'pending'
+    });
+
+    if (!relation) {
+      const response: ApiResponse<null> = {
+        success: false,
+        data: null,
+        message: 'No pending request found'
+      };
+      return res.status(404).json(response);
+    }
+
+    await relation.deleteOne();
+
+    const response: ApiResponse<{ success: boolean }> = {
+      success: true,
+      data: { success: true },
+      message: 'Connection request cancelled'
+    };
+    res.json(response);
+  } catch (error) {
+    console.error('Error cancelling connection request:', error);
+    const response: ApiResponse<null> = {
+      success: false,
+      data: null,
+      message: 'Failed to cancel request'
     };
     res.status(500).json(response);
   }
@@ -658,11 +715,10 @@ export const getDoctors = async (req: Request, res: Response) => {
       return res.status(401).json(response);
     }
 
-    // Get all doctors available for connection
+    // Get all registered doctors (no isActive field in schema)
     const doctors = await User.find({ 
-      role: 'doctor',
-      isActive: true
-    }).select('name email role avatar specialization licenseNumber');
+      role: 'doctor'
+    }).select('name email role avatar specialization licenseNumber isOnline lastSeen');
 
     // Convert _id to id for frontend compatibility
     const doctorsWithId = doctors.map(doctor => ({
@@ -672,7 +728,9 @@ export const getDoctors = async (req: Request, res: Response) => {
       role: doctor.role,
       avatar: doctor.avatar,
       specialization: doctor.specialization,
-      licenseNumber: doctor.licenseNumber
+      licenseNumber: doctor.licenseNumber,
+      isOnline: (doctor as any).isOnline,
+      lastSeen: (doctor as any).lastSeen
     }));
 
     const response: ApiResponse<typeof doctorsWithId> = {

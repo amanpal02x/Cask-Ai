@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
 
 interface UseWebSocketProps {
@@ -92,23 +92,23 @@ export const useWebSocket = ({ userId, userRole, token }: UseWebSocketProps) => 
     };
   }, [userId, userRole, token]);
 
-  const sendMessage = (type: string, data: any) => {
+  const sendMessage = useCallback((type: string, data: any) => {
     if (socketRef.current && isConnected) {
       socketRef.current.emit(type, data);
     }
-  };
+  }, [isConnected]);
 
-  const joinRelationship = (relationshipId: string) => {
+  const joinRelationship = useCallback((relationshipId: string) => {
     if (socketRef.current && isConnected) {
       socketRef.current.emit('join_relationship', { relationshipId });
     }
-  };
+  }, [isConnected]);
 
-  const updateStatus = (isOnline: boolean) => {
+  const updateStatus = useCallback((isOnline: boolean) => {
     if (socketRef.current && isConnected) {
       socketRef.current.emit('update_status', { isOnline });
     }
-  };
+  }, [isConnected]);
 
   return {
     isConnected,

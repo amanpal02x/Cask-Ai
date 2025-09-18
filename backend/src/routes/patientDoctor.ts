@@ -17,7 +17,8 @@ import {
   getOnlineDoctors,
   getConnectionRequests,
   updateUserOnlineStatus,
-  disconnectFromDoctor
+  disconnectFromDoctor,
+  cancelConnectionRequest
 } from '../controllers/patientDoctorController';
 import { authMiddleware } from '../middleware/auth';
 
@@ -34,6 +35,9 @@ router.post('/assign', assignPatient);
 
 // Patient requests connection to doctor
 router.post('/request-connection', requestDoctorConnection);
+
+// Patient cancels pending connection request
+router.post('/cancel-connection', cancelConnectionRequest);
 
 // Update connection status (approve/deny/suspend)
 router.put('/patients/:patientId/status', updateConnectionStatus);

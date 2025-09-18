@@ -17,6 +17,7 @@ import { Patient, DashboardStats } from '../types';
 import apiService from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import DoctorConnectionRequests from '../components/DoctorConnectionRequests';
+import { useWebSocket } from '../hooks/useWebSocket';
 
 const DoctorDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -24,6 +25,13 @@ const DoctorDashboard: React.FC = () => {
   const [patients, setPatients] = useState<Patient[]>([]);
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isOnline, setIsOnline] = useState<boolean>(false);
+
+  const { updateStatus } = useWebSocket({
+    userId: user?.id || '',
+    userRole: 'doctor',
+    token: localStorage.getItem('authToken') || ''
+  });
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -45,7 +53,42 @@ const DoctorDashboard: React.FC = () => {
     };
 
     fetchDashboardData();
+
+    // Ensure doctors remain online across refresh while on the dashboard
+    const setActive = async () => {
+      try {
+        setIsOnline(true);
+        await apiService.updateOnlineStatus(true);
+        updateStatus(true);
+      } catch (e) {
+        console.error('Failed to set doctor online on mount', e);
+      }
+    };
+    setActive();
+
+    return () => {
+      // Mark offline when leaving the dashboard
+      (async () => {
+        try {
+          setIsOnline(false);
+          await apiService.updateOnlineStatus(false);
+          updateStatus(false);
+        } catch {}
+      })();
+    };
   }, []);
+
+  const toggleOnline = async () => {
+    try {
+      const next = !isOnline;
+      setIsOnline(next);
+      await apiService.updateOnlineStatus(next);
+      updateStatus(next);
+    } catch (e) {
+      console.error('Failed to update online status', e);
+      setIsOnline((prev) => !prev);
+    }
+  };
 
   if (loading) {
     return (
@@ -66,6 +109,21 @@ const DoctorDashboard: React.FC = () => {
           <p className="mt-1 text-sm text-gray-500">
             Monitor your patients' progress and provide personalized guidance.
           </p>
+          <div className="mt-4 flex flex-col items-start">
+            <button
+              onClick={toggleOnline}
+              title={isOnline ? 'Online - click to go offline' : 'Offline - click to go online'}
+              aria-label={isOnline ? 'Online' : 'Offline'}
+              className={`h-4 w-4 rounded-full border transition-colors duration-150 ${
+                isOnline
+                  ? 'bg-green-500 border-green-600 hover:bg-green-600'
+                  : 'bg-red-500 border-red-600 hover:bg-red-600'
+              }`}
+            />
+            <span className={`mt-1 text-xs ${isOnline ? 'text-green-700' : 'text-gray-600'}`}>
+              {isOnline ? 'Active' : 'Inactive'}
+            </span>
+          </div>
         </div>
       </div>
 

@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  UserPlus, 
   CheckCircle,
   X,
   Clock,
   Users,
-  MessageSquare
 } from 'lucide-react';
 import apiService from '../services/api';
 import LoadingSpinner from './LoadingSpinner';
@@ -26,12 +24,13 @@ const DoctorConnectionRequests: React.FC = () => {
   const { user } = useAuth();
   const [requests, setRequests] = useState<ConnectionRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   // WebSocket connection for real-time updates
   const { isConnected: wsConnected, updateStatus } = useWebSocket({
     userId: user?.id || '',
     userRole: user?.role || 'doctor',
-    token: localStorage.getItem('token') || ''
+    token: localStorage.getItem('authToken') || ''
   });
 
   useEffect(() => {
@@ -48,7 +47,7 @@ const DoctorConnectionRequests: React.FC = () => {
         updateStatus(false);
       }
     };
-  }, [user?.id]);
+  }, [user?.id, updateStatus]);
 
   useEffect(() => {
     // Listen for WebSocket notifications
@@ -68,12 +67,16 @@ const DoctorConnectionRequests: React.FC = () => {
   const fetchConnectionRequests = async () => {
     try {
       setLoading(true);
+      setError(null);
       const response = await apiService.getConnectionRequests();
       if (response.success) {
         setRequests(response.data || []);
+      } else {
+        setError('Failed to load connection requests');
       }
     } catch (error) {
       console.error('Failed to fetch connection requests:', error);
+      setError('Unable to reach server. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -118,6 +121,24 @@ const DoctorConnectionRequests: React.FC = () => {
         <div className="px-4 py-5 sm:p-6">
           <div className="flex items-center justify-center h-32">
             <LoadingSpinner size="lg" />
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="bg-white shadow rounded-lg">
+        <div className="px-4 py-5 sm:p-6">
+          <div className="bg-red-50 border border-red-200 rounded p-3 text-sm text-red-700">
+            <p className="mb-2">{error}</p>
+            <button
+              onClick={fetchConnectionRequests}
+              className="inline-flex items-center px-3 py-1.5 rounded bg-red-600 text-white hover:bg-red-700"
+            >
+              Retry
+            </button>
           </div>
         </div>
       </div>

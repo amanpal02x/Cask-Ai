@@ -2,6 +2,8 @@ import express from "express";
 import ExerciseResult from "../models/ExerciseResult";
 import axios from "axios";
 
+const ML_BACKEND_URL = process.env.ML_BACKEND_URL || "http://localhost:8001";
+
 const router = express.Router();
 
 // POST: analyze pose and save result
@@ -10,7 +12,7 @@ router.post("/analyze", async (req, res) => {
     const { patientId, exercise, landmarks } = req.body;
 
     // Call Python ML backend
-    const mlResponse = await axios.post("http://localhost:8000/predict", {
+    const mlResponse = await axios.post(`${ML_BACKEND_URL}/predict`, {
       exercise,
       landmarks,
     });

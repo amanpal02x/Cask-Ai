@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { 
@@ -21,9 +21,37 @@ interface LayoutProps {
 
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [isLarge, setIsLarge] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    return window.matchMedia('(min-width: 1024px)').matches;
+  });
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const mq = window.matchMedia('(min-width: 1024px)');
+    const handler = (e: MediaQueryListEvent | MediaQueryList) => {
+      const matches = 'matches' in e ? e.matches : (e as MediaQueryList).matches;
+      setIsLarge(matches);
+    };
+    // Initial sync and listener
+    handler(mq);
+    if ('addEventListener' in mq) {
+      mq.addEventListener('change', handler as (ev: Event) => void);
+    } else if ('addListener' in mq) {
+      // @ts-ignore for older browsers
+      mq.addListener(handler);
+    }
+    return () => {
+      if ('removeEventListener' in mq) {
+        mq.removeEventListener('change', handler as (ev: Event) => void);
+      } else if ('removeListener' in mq) {
+        // @ts-ignore for older browsers
+        mq.removeListener(handler);
+      }
+    };
+  }, []);
 
   const handleLogout = async () => {
     await logout();
@@ -85,7 +113,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             })}
             
             {/* Doctor Connection for Patients */}
-            {user?.role === 'patient' && (
+            {user?.role === 'patient' && !isLarge && sidebarOpen && (
               <div className="mt-4">
                 <SidebarDoctorConnection userId={user.id} />
               </div>
@@ -120,7 +148,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             })}
             
             {/* Doctor Connection for Patients */}
-            {user?.role === 'patient' && (
+            {user?.role === 'patient' && isLarge && (
               <div className="mt-4">
                 <SidebarDoctorConnection userId={user.id} />
               </div>
