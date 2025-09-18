@@ -8,6 +8,8 @@ export interface IUser extends Document {
   avatar?: string;
   specialization?: string;
   licenseNumber?: string;
+  isOnline: boolean;
+  lastSeen: Date;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -21,6 +23,8 @@ const UserSchema = new Schema<IUser>(
     avatar: { type: String },
     specialization: { type: String },
     licenseNumber: { type: String },
+    isOnline: { type: Boolean, default: false },
+    lastSeen: { type: Date, default: Date.now },
   },
   { timestamps: true }
 );

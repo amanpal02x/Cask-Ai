@@ -13,7 +13,11 @@ import {
   getAllPatientProgress,
   getSuggestions,
   createSuggestion,
-  getPatientConnectionStatus
+  getPatientConnectionStatus,
+  getOnlineDoctors,
+  getConnectionRequests,
+  updateUserOnlineStatus,
+  disconnectFromDoctor
 } from '../controllers/patientDoctorController';
 import { authMiddleware } from '../middleware/auth';
 
@@ -51,9 +55,13 @@ router.delete('/patients/:patientId', removePatient);
 
 // Enhanced endpoints
 router.get('/doctors', getDoctors);
+router.get('/online-doctors', getOnlineDoctors);
 router.get('/progress', getAllPatientProgress);
 router.get('/suggestions', getSuggestions);
 router.post('/suggestions', createSuggestion);
 router.get('/connection-status', getPatientConnectionStatus);
+router.get('/connection-requests', getConnectionRequests);
+router.put('/online-status', updateUserOnlineStatus);
+router.post('/disconnect', disconnectFromDoctor);
 
 export default router;

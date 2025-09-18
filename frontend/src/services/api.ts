@@ -169,12 +169,12 @@ async analyzePose(sessionId: string, landmarks: number[][]): Promise<ApiResponse
 
   // Enhanced Doctor-Patient Connection APIs
   async getDoctors(): Promise<ApiResponse<any[]>> {
-    const response = await this.api.get('/patient-doctor/doctors');
+    const response = await this.api.get('/doctor/doctors');
     return response.data;
   }
 
   async assignPatient(patientId: string, reason?: string): Promise<ApiResponse<any>> {
-    const response = await this.api.post('/patient-doctor/assign', { 
+    const response = await this.api.post('/doctor/assign', { 
       patientId, 
       assignmentReason: reason 
     });
@@ -182,7 +182,7 @@ async analyzePose(sessionId: string, landmarks: number[][]): Promise<ApiResponse
   }
 
   async requestDoctorConnection(doctorId: string, reason?: string): Promise<ApiResponse<any>> {
-    const response = await this.api.post('/patient-doctor/request-connection', { 
+    const response = await this.api.post('/doctor/request-connection', { 
       doctorId, 
       requestReason: reason 
     });
@@ -190,22 +190,42 @@ async analyzePose(sessionId: string, landmarks: number[][]): Promise<ApiResponse
   }
 
   async updateConnectionStatus(patientId: string, status: string): Promise<ApiResponse<any>> {
-    const response = await this.api.put(`/patient-doctor/patients/${patientId}/status`, { status });
+    const response = await this.api.put(`/doctor/patients/${patientId}/status`, { status });
+    return response.data;
+  }
+
+  async disconnectFromDoctor(): Promise<ApiResponse<any>> {
+    const response = await this.api.post('/doctor/disconnect');
     return response.data;
   }
 
   async getMyProgress(): Promise<ApiResponse<any[]>> {
-    const response = await this.api.get('/patient-doctor/progress');
+    const response = await this.api.get('/doctor/progress');
+    return response.data;
+  }
+
+  async getOnlineDoctors(): Promise<ApiResponse<any[]>> {
+    const response = await this.api.get('/doctor/online-doctors');
+    return response.data;
+  }
+
+  async getConnectionRequests(): Promise<ApiResponse<any[]>> {
+    const response = await this.api.get('/doctor/connection-requests');
+    return response.data;
+  }
+
+  async updateOnlineStatus(isOnline: boolean): Promise<ApiResponse<any>> {
+    const response = await this.api.put('/doctor/online-status', { isOnline });
     return response.data;
   }
 
   async getSuggestions(): Promise<ApiResponse<any[]>> {
-    const response = await this.api.get('/patient-doctor/suggestions');
+    const response = await this.api.get('/doctor/suggestions');
     return response.data;
   }
 
   async createSuggestion(suggestion: any): Promise<ApiResponse<any>> {
-    const response = await this.api.post('/patient-doctor/suggestions', suggestion);
+    const response = await this.api.post('/doctor/suggestions', suggestion);
     return response.data;
   }
 
@@ -216,11 +236,13 @@ async analyzePose(sessionId: string, landmarks: number[][]): Promise<ApiResponse
       name: string;
       email: string;
       specialization?: string;
+      isOnline: boolean;
+      lastSeen: string | null;
     } | null;
     status: string | null;
     connectionDate: string | null;
   }>> {
-    const response = await this.api.get('/patient-doctor/connection-status');
+    const response = await this.api.get('/doctor/connection-status');
     return response.data;
   }
 

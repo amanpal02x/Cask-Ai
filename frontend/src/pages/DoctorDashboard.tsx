@@ -16,7 +16,7 @@ import { useAuth } from '../hooks/useAuth';
 import { Patient, DashboardStats } from '../types';
 import apiService from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
-import DatasetManagement from '../components/DatasetManagement';
+import DoctorConnectionRequests from '../components/DoctorConnectionRequests';
 
 const DoctorDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -230,6 +230,9 @@ const DoctorDashboard: React.FC = () => {
         </div>
       </div>
 
+      {/* Connection Requests */}
+      <DoctorConnectionRequests />
+
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Patient Activity */}
         <div className="bg-white shadow rounded-lg">
@@ -408,10 +411,6 @@ const DoctorDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Dataset Management */}
-      <div className="mt-6">
-        <DatasetManagement />
-      </div>
     </div>
   );
 };

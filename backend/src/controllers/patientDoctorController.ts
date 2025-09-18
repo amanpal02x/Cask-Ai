@@ -664,9 +664,20 @@ export const getDoctors = async (req: Request, res: Response) => {
       isActive: true
     }).select('name email role avatar specialization licenseNumber');
 
-    const response: ApiResponse<typeof doctors> = {
+    // Convert _id to id for frontend compatibility
+    const doctorsWithId = doctors.map(doctor => ({
+      id: (doctor as any)._id.toString(),
+      name: doctor.name,
+      email: doctor.email,
+      role: doctor.role,
+      avatar: doctor.avatar,
+      specialization: doctor.specialization,
+      licenseNumber: doctor.licenseNumber
+    }));
+
+    const response: ApiResponse<typeof doctorsWithId> = {
       success: true,
-      data: doctors,
+      data: doctorsWithId,
       message: 'Doctors retrieved successfully'
     };
     res.json(response);
@@ -701,8 +712,8 @@ export const getAllPatientProgress = async (req: Request, res: Response) => {
     }).populate('patientId', 'name email');
 
     const progressData = relationships.map(rel => ({
-      id: rel._id.toString(),
-      patientId: rel.patientId._id.toString(),
+      id: (rel as any)._id.toString(),
+      patientId: (rel.patientId as any)._id.toString(),
       patientName: (rel.patientId as any).name,
       totalSessions: rel.totalSessions || 0,
       averageScore: rel.averageScore || 0,
@@ -916,7 +927,7 @@ export const getPatientConnectionStatus = async (req: Request, res: Response) =>
     const relation = await PatientDoctor.findOne({
       patientId: patientId,
       status: { $in: ['active', 'pending'] }
-    }).populate('doctorId', 'name email specialization');
+    }).populate('doctorId', 'name email specialization isOnline lastSeen');
 
     const connectionStatus = {
       isConnected: !!relation,
@@ -924,7 +935,9 @@ export const getPatientConnectionStatus = async (req: Request, res: Response) =>
         id: relation.doctorId._id.toString(),
         name: (relation.doctorId as any).name,
         email: (relation.doctorId as any).email,
-        specialization: (relation.doctorId as any).specialization
+        specialization: (relation.doctorId as any).specialization,
+        isOnline: (relation.doctorId as any).isOnline || false,
+        lastSeen: (relation.doctorId as any).lastSeen?.toISOString() || null
       } : null,
       status: relation?.status || null,
       connectionDate: relation?.startedAt?.toISOString() || null
@@ -943,6 +956,204 @@ export const getPatientConnectionStatus = async (req: Request, res: Response) =>
       success: false,
       data: null,
       message: 'Failed to fetch connection status'
+    };
+    res.status(500).json(response);
+  }
+};
+
+export const getOnlineDoctors = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?.id;
+    
+    if (!userId) {
+      const response: ApiResponse<null> = {
+        success: false,
+        data: null,
+        message: 'User not authenticated'
+      };
+      return res.status(401).json(response);
+    }
+
+    // Get all online doctors
+    const doctors = await User.find({ 
+      role: 'doctor',
+      isOnline: true
+    }).select('name email specialization licenseNumber isOnline lastSeen');
+
+    // Convert _id to id for frontend compatibility
+    const doctorsWithId = doctors.map(doctor => ({
+      id: (doctor as any)._id.toString(),
+      name: doctor.name,
+      email: doctor.email,
+      specialization: doctor.specialization,
+      licenseNumber: doctor.licenseNumber,
+      isOnline: doctor.isOnline,
+      lastSeen: doctor.lastSeen
+    }));
+
+    const response: ApiResponse<typeof doctorsWithId> = {
+      success: true,
+      data: doctorsWithId,
+      message: 'Online doctors retrieved successfully'
+    };
+    
+    res.json(response);
+  } catch (error) {
+    console.error('Error fetching online doctors:', error);
+    const response: ApiResponse<null> = {
+      success: false,
+      data: null,
+      message: 'Failed to fetch online doctors'
+    };
+    res.status(500).json(response);
+  }
+};
+
+export const getConnectionRequests = async (req: Request, res: Response) => {
+  try {
+    const doctorId = (req as any).user?.id;
+    
+    if (!doctorId) {
+      const response: ApiResponse<null> = {
+        success: false,
+        data: null,
+        message: 'User not authenticated'
+      };
+      return res.status(401).json(response);
+    }
+
+    // Get all pending connection requests for this doctor
+    const requests = await PatientDoctor.find({
+      doctorId: doctorId,
+      status: 'pending'
+    }).populate('patientId', 'name email avatar');
+
+    const connectionRequests = requests.map(request => ({
+      id: (request as any)._id.toString(),
+      patientId: request.patientId._id.toString(),
+      patientName: (request.patientId as any).name,
+      patientEmail: (request.patientId as any).email,
+      patientAvatar: (request.patientId as any).avatar,
+      assignmentReason: request.assignmentReason,
+      requestedAt: request.createdAt.toISOString()
+    }));
+    
+    const response: ApiResponse<typeof connectionRequests> = {
+      success: true,
+      data: connectionRequests,
+      message: 'Connection requests retrieved successfully'
+    };
+    
+    res.json(response);
+  } catch (error) {
+    console.error('Error fetching connection requests:', error);
+    const response: ApiResponse<null> = {
+      success: false,
+      data: null,
+      message: 'Failed to fetch connection requests'
+    };
+    res.status(500).json(response);
+  }
+};
+
+export const updateUserOnlineStatus = async (req: Request, res: Response) => {
+  try {
+    const userId = (req as any).user?.id;
+    const { isOnline } = req.body;
+    
+    if (!userId) {
+      const response: ApiResponse<null> = {
+        success: false,
+        data: null,
+        message: 'User not authenticated'
+      };
+      return res.status(401).json(response);
+    }
+
+    await User.findByIdAndUpdate(userId, {
+      isOnline: isOnline,
+      lastSeen: new Date()
+    });
+    
+    const response: ApiResponse<{ success: boolean }> = {
+      success: true,
+      data: { success: true },
+      message: 'Online status updated successfully'
+    };
+    
+    res.json(response);
+  } catch (error) {
+    console.error('Error updating online status:', error);
+    const response: ApiResponse<null> = {
+      success: false,
+      data: null,
+      message: 'Failed to update online status'
+    };
+    res.status(500).json(response);
+  }
+};
+
+export const disconnectFromDoctor = async (req: Request, res: Response) => {
+  try {
+    const patientId = (req as any).user?.id;
+    
+    if (!patientId) {
+      const response: ApiResponse<null> = {
+        success: false,
+        data: null,
+        message: 'User not authenticated'
+      };
+      return res.status(401).json(response);
+    }
+
+    // Find and update the active connection
+    const relation = await PatientDoctor.findOneAndUpdate(
+      {
+        patientId: patientId,
+        status: { $in: ['active', 'pending'] }
+      },
+      {
+        status: 'terminated',
+        endedAt: new Date()
+      },
+      { new: true }
+    ).populate('doctorId', 'name email');
+
+    if (!relation) {
+      const response: ApiResponse<null> = {
+        success: false,
+        data: null,
+        message: 'No active connection found'
+      };
+      return res.status(404).json(response);
+    }
+
+    // Send notification to doctor
+    await NotificationService.createNotification({
+      recipientId: relation.doctorId._id.toString(),
+      senderId: patientId,
+      type: 'info',
+      title: 'Patient Disconnected',
+      message: `Patient has disconnected from your care.`,
+      data: {
+        priority: 'medium',
+        category: 'connection_update'
+      }
+    });
+    
+    const response: ApiResponse<{ success: boolean }> = {
+      success: true,
+      data: { success: true },
+      message: 'Successfully disconnected from doctor'
+    };
+    
+    res.json(response);
+  } catch (error) {
+    console.error('Error disconnecting from doctor:', error);
+    const response: ApiResponse<null> = {
+      success: false,
+      data: null,
+      message: 'Failed to disconnect from doctor'
     };
     res.status(500).json(response);
   }

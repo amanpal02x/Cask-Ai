@@ -3,6 +3,7 @@ import cors from 'cors';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
+import { createServer } from 'http';
 import authRoutes from './routes/auth';
 import userRoutes from './routes/user';
 import dashboardRoutes from './routes/dashboard';
@@ -12,6 +13,7 @@ import exerciseResultsRoutes from './routes/exerciseResults';
 import activityRoutes from './routes/activities';
 import notificationRoutes from './routes/notifications';
 import patientDoctorRoutes from './routes/patientDoctor';
+import websocketService from './services/websocketService';
 
 dotenv.config();
 
@@ -56,9 +58,16 @@ app.use('/api/notifications', notificationRoutes);
 app.use('/api/doctor', patientDoctorRoutes);
 
 const PORT = Number(process.env.PORT) || 8000;
-app.listen(PORT, () => {
+const server = createServer(app);
+
+// Initialize WebSocket service
+websocketService.initialize(server);
+
+server.listen(PORT, () => {
   // eslint-disable-next-line no-console
   console.log(`Server running on port ${PORT}`);
+  // eslint-disable-next-line no-console
+  console.log(`WebSocket server initialized`);
 });
 
 

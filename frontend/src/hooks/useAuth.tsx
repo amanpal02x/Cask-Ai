@@ -84,9 +84,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
-  const logout = () => {
-    apiService.logout();
-    setUser(null);
+  const logout = async () => {
+    try {
+      // Best-effort: disconnect any active doctor connection
+      try {
+        await apiService.disconnectFromDoctor();
+      } catch (e) {
+        // ignore if no active connection
+      }
+
+      // Ensure user appears offline when logging out
+      await apiService.updateOnlineStatus(false);
+    } catch (e) {
+      // non-blocking
+      console.error('Failed to update online status on logout:', e);
+    } finally {
+      apiService.logout();
+      setUser(null);
+    }
   };
 
   const value: AuthContextType = {
