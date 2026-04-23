@@ -1,6 +1,7 @@
 import { Types } from 'mongoose';
-import Exercise from '../models/Exercise';
+import Exercise, { IExercise as IExerciseModel } from '../models/Exercise';
 import { Exercise as IExercise } from '../types';
+import { HydratedDocument } from 'mongoose';
 
 export class ExerciseService {
   
@@ -31,10 +32,10 @@ export class ExerciseService {
 
     const exercises = await Exercise.find(query)
       .populate('createdBy', 'name email')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 }) as HydratedDocument<IExerciseModel>[];
 
     return exercises.map(exercise => ({
-      id: exercise._id.toString(),
+      id: (exercise as any)._id.toString(),
       name: exercise.name,
       description: exercise.description,
       instructions: exercise.instructions,
@@ -60,14 +61,14 @@ export class ExerciseService {
     const exercise = await Exercise.findOne({ 
       _id: exerciseId, 
       isActive: true 
-    }).populate('createdBy', 'name email');
+    }).populate('createdBy', 'name email') as HydratedDocument<IExerciseModel> | null;
 
     if (!exercise) {
       return null;
     }
 
     return {
-      id: exercise._id.toString(),
+      id: (exercise as any)._id.toString(),
       name: exercise.name,
       description: exercise.description,
       instructions: exercise.instructions,
@@ -95,7 +96,7 @@ export class ExerciseService {
     await exercise.populate('createdBy', 'name email');
 
     return {
-      id: exercise._id.toString(),
+      id: (exercise as any)._id.toString(),
       name: exercise.name,
       description: exercise.description,
       instructions: exercise.instructions,
@@ -135,7 +136,7 @@ export class ExerciseService {
     await exercise.populate('createdBy', 'name email');
 
     return {
-      id: exercise._id.toString(),
+      id: (exercise as any)._id.toString(),
       name: exercise.name,
       description: exercise.description,
       instructions: exercise.instructions,
@@ -158,7 +159,7 @@ export class ExerciseService {
     let exercise = await Exercise.findOne({ 
       name: 'Live Exercise Session',
       createdBy: new Types.ObjectId(userId)
-    });
+    }) as HydratedDocument<IExerciseModel> | null;
 
     if (!exercise) {
       // Create a new default exercise
@@ -189,6 +190,40 @@ export class ExerciseService {
             threshold: 0.5
           }
         },
+        formGuidance: {
+          correctForm: {
+            description: 'Maintain proper alignment throughout the movement.',
+            keyPoints: [
+              'Position yourself in front of the camera',
+              'Follow the real-time feedback',
+              'Maintain a neutral spine'
+            ],
+            commonMistakes: [
+              'Moving outside the camera frame',
+              'Poor lighting conditions',
+              'Incomplete range of motion'
+            ],
+            tips: [
+              'Ensure your full body is visible',
+              'Perform exercises in a well-lit area',
+              'Move at a controlled pace'
+            ]
+          },
+          visualGuide: {
+            landmarks: [
+              { name: 'Shoulder', position: 'Shoulder joint', importance: 'important' },
+              { name: 'Hip', position: 'Hip joint', importance: 'important' },
+              { name: 'Knee', position: 'Knee joint', importance: 'important' }
+            ]
+          },
+          datasetInfo: {
+            source: 'CaskAI Default Guidance',
+            sampleCount: 1000,
+            accuracy: 90,
+            lastUpdated: new Date(),
+            version: '1.0.0'
+          }
+        },
         createdBy: new Types.ObjectId(userId),
         isActive: true
       });
@@ -197,7 +232,7 @@ export class ExerciseService {
     }
 
     return {
-      id: exercise._id.toString(),
+      id: (exercise as any)._id.toString(),
       name: exercise.name,
       description: exercise.description,
       instructions: exercise.instructions,
@@ -235,10 +270,10 @@ export class ExerciseService {
       isActive: true 
     })
     .populate('createdBy', 'name email')
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 }) as HydratedDocument<IExerciseModel>[];
 
     return exercises.map(exercise => ({
-      id: exercise._id.toString(),
+      id: (exercise as any)._id.toString(),
       name: exercise.name,
       description: exercise.description,
       instructions: exercise.instructions,
@@ -262,10 +297,10 @@ export class ExerciseService {
       isActive: true 
     })
     .populate('createdBy', 'name email')
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 }) as HydratedDocument<IExerciseModel>[];
 
     return exercises.map(exercise => ({
-      id: exercise._id.toString(),
+      id: (exercise as any)._id.toString(),
       name: exercise.name,
       description: exercise.description,
       instructions: exercise.instructions,
@@ -289,10 +324,10 @@ export class ExerciseService {
       isActive: true
     })
     .populate('createdBy', 'name email')
-    .sort({ score: { $meta: 'textScore' } });
+    .sort({ score: { $meta: 'textScore' } }) as HydratedDocument<IExerciseModel>[];
 
     return exercises.map(exercise => ({
-      id: exercise._id.toString(),
+      id: (exercise as any)._id.toString(),
       name: exercise.name,
       description: exercise.description,
       instructions: exercise.instructions,
@@ -320,10 +355,10 @@ export class ExerciseService {
       isActive: true 
     })
     .populate('createdBy', 'name email')
-    .sort({ createdAt: -1 });
+    .sort({ createdAt: -1 }) as HydratedDocument<IExerciseModel>[];
 
     return exercises.map(exercise => ({
-      id: exercise._id.toString(),
+      id: (exercise as any)._id.toString(),
       name: exercise.name,
       description: exercise.description,
       instructions: exercise.instructions,

@@ -74,7 +74,7 @@ export class NotificationService {
       .limit(limit);
 
     return notifications.map(notification => ({
-      id: notification._id.toString(),
+      id: (notification as any)._id.toString(),
       type: notification.type,
       title: notification.title,
       message: notification.message,
@@ -223,7 +223,7 @@ export class NotificationService {
     await notification.populate('exerciseId', 'name');
 
     return {
-      id: notification._id.toString(),
+      id: (notification as any)._id.toString(),
       type: notification.type,
       title: notification.title,
       message: notification.message,

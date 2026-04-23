@@ -18,6 +18,7 @@ export interface Patient extends User {
   averageScore?: number;
   totalSessions?: number;
   lastInteraction?: string;
+  relationshipId?: string;
 }
 
 // Doctor Types
@@ -139,12 +140,21 @@ export interface RealTimeFeedback {
 export interface Notification {
   id: string;
   userId: string;
-  type: 'message' | 'reminder' | 'feedback' | 'system';
+  type: 'message' | 'reminder' | 'feedback' | 'system' | 'chat_message' | 'connection_request' | 'connection_update';
   title: string;
   message: string;
   isRead: boolean;
   createdAt: string;
   actionUrl?: string;
+  data?: {
+    relationshipId?: string;
+    senderId?: string;
+    senderName?: string;
+    priority?: string;
+    category?: string;
+    actionUrl?: string;
+    actionText?: string;
+  };
 }
 
 // Dashboard Data Types

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Users, 
@@ -18,6 +18,8 @@ import apiService from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import DoctorConnectionRequests from '../components/DoctorConnectionRequests';
 import { useWebSocket } from '../hooks/useWebSocket';
+import NotificationsSection from '../components/NotificationsSection';
+import ChatWidget from '../components/ChatWidget';
 
 const DoctorDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -26,6 +28,7 @@ const DoctorDashboard: React.FC = () => {
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isOnline, setIsOnline] = useState<boolean>(false);
+  const chatWidgetRef = useRef<any>(null);
 
   const { updateStatus } = useWebSocket({
     userId: user?.id || '',
@@ -77,6 +80,12 @@ const DoctorDashboard: React.FC = () => {
       })();
     };
   }, []);
+
+  const handleOpenChat = (relationshipId: string) => {
+    if (chatWidgetRef.current) {
+      chatWidgetRef.current.openChat(relationshipId);
+    }
+  };
 
   const toggleOnline = async () => {
     try {
@@ -469,6 +478,11 @@ const DoctorDashboard: React.FC = () => {
         </div>
       </div>
 
+      {/* Notifications */}
+      <NotificationsSection onOpenChat={handleOpenChat} />
+
+      {/* Chat Widget */}
+      <ChatWidget ref={chatWidgetRef} />
     </div>
   );
 };

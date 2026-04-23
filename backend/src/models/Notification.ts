@@ -8,7 +8,7 @@ export interface INotification extends Document {
   
   type: 'info' | 'warning' | 'success' | 'error' | 'recommendation' | 'reminder' |
         'progress_alert' | 'goal_reminder' | 'form_feedback' | 'achievement' |
-        'doctor_message' | 'system_update';
+        'doctor_message' | 'system_update' | 'chat_message' | 'connection_request' | 'connection_update';
   
   title: string;
   message: string;
@@ -62,7 +62,7 @@ const NotificationSchema = new Schema<INotification>(
       enum: [
         'info', 'warning', 'success', 'error', 'recommendation', 'reminder',
         'progress_alert', 'goal_reminder', 'form_feedback', 'achievement',
-        'doctor_message', 'system_update'
+        'doctor_message', 'system_update', 'chat_message', 'connection_request', 'connection_update'
       ],
       required: true
     },
@@ -106,7 +106,6 @@ NotificationSchema.index({ senderId: 1, createdAt: -1 });
 NotificationSchema.index({ type: 1 });
 NotificationSchema.index({ 'data.priority': 1, createdAt: -1 });
 NotificationSchema.index({ isArchived: 1 });
-NotificationSchema.index({ 'data.expiresAt': 1 });
 NotificationSchema.index({ sessionId: 1 });
 NotificationSchema.index({ exerciseId: 1 });
 

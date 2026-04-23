@@ -99,24 +99,24 @@ export class ActivityService {
       .limit(limit);
 
     return activities.map(activity => ({
-      id: activity._id.toString(),
+      id: (activity as any)._id.toString(),
       type: activity.type,
       title: activity.title,
       description: activity.description,
       metadata: activity.metadata,
       createdAt: activity.createdAt.toISOString(),
       user: activity.userId ? {
-        id: activity.userId._id.toString(),
+        id: (activity.userId as any)._id.toString(),
         name: (activity.userId as any).name,
         role: (activity.userId as any).role
       } : undefined,
       session: activity.sessionId ? {
-        id: activity.sessionId._id.toString(),
+        id: (activity.sessionId as any)._id.toString(),
         score: (activity.sessionId as any).averageScore,
         reps: (activity.sessionId as any).totalReps
       } : undefined,
       exercise: activity.exerciseId ? {
-        id: activity.exerciseId._id.toString(),
+        id: (activity.exerciseId as any)._id.toString(),
         name: (activity.exerciseId as any).name
       } : undefined
     }));
@@ -163,24 +163,24 @@ export class ActivityService {
     await activity.populate('exerciseId', 'name');
 
     return {
-      id: activity._id.toString(),
+      id: (activity as any)._id.toString(),
       type: activity.type,
       title: activity.title,
       description: activity.description,
       metadata: activity.metadata,
       createdAt: activity.createdAt.toISOString(),
       user: activity.userId ? {
-        id: activity.userId._id.toString(),
+        id: (activity.userId as any)._id.toString(),
         name: (activity.userId as any).name,
         role: (activity.userId as any).role
       } : undefined,
       session: activity.sessionId ? {
-        id: activity.sessionId._id.toString(),
+        id: (activity.sessionId as any)._id.toString(),
         score: (activity.sessionId as any).averageScore,
         reps: (activity.sessionId as any).totalReps
       } : undefined,
       exercise: activity.exerciseId ? {
-        id: activity.exerciseId._id.toString(),
+        id: (activity.exerciseId as any)._id.toString(),
         name: (activity.exerciseId as any).name
       } : undefined
     };
@@ -342,24 +342,24 @@ export class ActivityService {
     }
 
     return {
-      id: activity._id.toString(),
+      id: (activity as any)._id.toString(),
       type: activity.type,
       title: activity.title,
       description: activity.description,
       metadata: activity.metadata,
       createdAt: activity.createdAt.toISOString(),
       user: activity.userId ? {
-        id: activity.userId._id.toString(),
+        id: (activity.userId as any)._id.toString(),
         name: (activity.userId as any).name,
         role: (activity.userId as any).role
       } : undefined,
       session: activity.sessionId ? {
-        id: activity.sessionId._id.toString(),
+        id: (activity.sessionId as any)._id.toString(),
         score: (activity.sessionId as any).averageScore,
         reps: (activity.sessionId as any).totalReps
       } : undefined,
       exercise: activity.exerciseId ? {
-        id: activity.exerciseId._id.toString(),
+        id: (activity.exerciseId as any)._id.toString(),
         name: (activity.exerciseId as any).name
       } : undefined
     };

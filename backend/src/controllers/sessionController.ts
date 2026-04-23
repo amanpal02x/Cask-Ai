@@ -224,31 +224,44 @@ export const analyzeFrame = async (req: Request, res: Response) => {
       return res.status(400).json(response);
     }
 
+    // Get session to know which exercise we are doing
+    const session = await SessionService.getSession(sessionId);
+    if (!session) {
+      const response: ApiResponse<null> = {
+        success: false,
+        data: null,
+        message: 'Session not found'
+      };
+      return res.status(404).json(response);
+    }
+
+    // Explicitly get exercise name to avoid hydration issues
+    const { ExerciseService } = await import('../services/exerciseService');
+    const exercise = await ExerciseService.getExerciseById(session.exerciseId);
+    const exerciseName = exercise?.name || "squat";
+
     // Import the ML service function
     const { analyzePose } = await import('../services/mlService');
     
-    // Call Python ML backend for pose analysis
-    const result = await analyzePose(landmarks);
+    // Call Python ML backend for pose analysis with exercise name and session context
+    const result = await analyzePose(landmarks, exerciseName, sessionId);
 
     // Add pose frame to session
     const frameData = {
       timestamp: Date.now(),
       landmarks: landmarks,
       angles: result.angles || {},
-      isCorrectForm: result.accuracy > 70,
-      confidence: result.accuracy / 100
+      isCorrectForm: result.isCorrectForm ?? (result.accuracy > 70),
+      confidence: result.confidence ?? (result.accuracy / 100)
     };
 
     await SessionService.addPoseFrame(sessionId, frameData);
 
-    // Calculate rep count if this is a new rep
-    let repCount = 0;
-    if (result.isRepComplete) {
-      const session = await SessionService.getSession(sessionId);
-      if (session) {
-        repCount = (session.reps || 0) + 1;
-        await SessionService.updateSessionReps(sessionId, repCount);
-      }
+    // Update rep count from ML results
+    let currentRepCount = session.reps || 0;
+    if (result.repCount !== undefined && result.repCount > currentRepCount) {
+      currentRepCount = result.repCount;
+      await SessionService.updateSessionReps(sessionId, currentRepCount);
     }
 
     const response: ApiResponse<{
@@ -257,14 +270,16 @@ export const analyzeFrame = async (req: Request, res: Response) => {
       repCount?: number;
       angles?: any;
       isCorrectForm: boolean;
+      confidence: number;
     }> = {
       success: true,
       data: {
         accuracy: result.accuracy,
         feedback: result.feedback || ['Good form!'],
-        repCount: repCount > 0 ? repCount : undefined,
+        repCount: currentRepCount,
         angles: result.angles,
-        isCorrectForm: frameData.isCorrectForm
+        isCorrectForm: frameData.isCorrectForm,
+        confidence: frameData.confidence
       },
       message: 'Pose analyzed successfully'
     };

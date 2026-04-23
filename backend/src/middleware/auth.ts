@@ -15,7 +15,7 @@ export const authMiddleware = (req: Request, res: Response, next: NextFunction) 
   const token = authHeader.split(' ')[1];
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET || 'change_me') as JwtPayload;
-    req.user = { id: decoded.id, role: decoded.role } as any;
+    (req as any).user = { id: decoded.id, role: decoded.role };
     next();
   } catch (error) {
     return res.status(401).json({ success: false, error: 'Invalid token' });

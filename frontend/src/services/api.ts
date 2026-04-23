@@ -2,19 +2,21 @@ import axios, { AxiosInstance } from 'axios';
 import { 
   User, 
   Patient, 
+  Doctor,
   Exercise, 
   ExerciseSession, 
   ApiResponse,
   DashboardStats,
   ChartData,
   Notification
+  
 } from '../types';
 
 // API Configuration
 const API_BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
 
 class ApiService {
-  private api: AxiosInstance;
+  private api: AxiosInstance
 
   constructor() {
     this.api = axios.create({
@@ -24,7 +26,6 @@ class ApiService {
         'Content-Type': 'application/json',
       },
     });
-
 
 
     // Request interceptor to add auth token
@@ -116,12 +117,14 @@ class ApiService {
   }
 
   // Pose Analysis with ML backend
-  async analyzePose(sessionId: string, landmarks: number[][]): Promise<ApiResponse<{
+async analyzePose(sessionId: string, landmarks: number[][]): Promise<ApiResponse<{
   accuracy: number;
   feedback: string[];
   repCount?: number;
+  isCorrectForm: boolean;
+  confidence: number;
 }>> {
-  const response = await this.api.post(`/sessions/${sessionId}/analyze`, {
+  const response = await this.api.post(`/sessions/${sessionId}/analyze-pose`, {
     landmarks,
   });
   return response.data;
@@ -139,6 +142,14 @@ class ApiService {
     if (days) params.append('days', days.toString());
     
     const response = await this.api.get(`/dashboard/progress?${params}`);
+    return response.data;
+  }
+  
+  async getRecentActivity(limit?: number): Promise<ApiResponse<any[]>> {
+    const params = new URLSearchParams();
+    if (limit) params.append('limit', limit.toString());
+    
+    const response = await this.api.get(`/dashboard/recent-activity?${params}`);
     return response.data;
   }
 
@@ -166,116 +177,80 @@ class ApiService {
     const response = await this.api.post(`/doctor/patients/${patientId}/recommendations`, { message });
     return response.data;
   }
-
-  // Enhanced Doctor-Patient Connection APIs
-  async getDoctors(): Promise<ApiResponse<any[]>> {
-    const response = await this.api.get('/doctor/doctors');
-    return response.data;
-  }
-
-  async assignPatient(patientId: string, reason?: string): Promise<ApiResponse<any>> {
-    const response = await this.api.post('/doctor/assign', { 
-      patientId, 
-      assignmentReason: reason 
-    });
-    return response.data;
-  }
-
-  async requestDoctorConnection(doctorId: string, reason?: string): Promise<ApiResponse<any>> {
-    const response = await this.api.post('/doctor/request-connection', { 
-      doctorId, 
-      requestReason: reason 
-    });
-    return response.data;
-  }
-
-  async updateConnectionStatus(patientId: string, status: string): Promise<ApiResponse<any>> {
-    const response = await this.api.put(`/doctor/patients/${patientId}/status`, { status });
-    return response.data;
-  }
-
-  async disconnectFromDoctor(): Promise<ApiResponse<any>> {
-    const response = await this.api.post('/doctor/disconnect');
-    return response.data;
-  }
-
-  async cancelConnectionRequest(): Promise<ApiResponse<any>> {
-    const response = await this.api.post('/doctor/cancel-connection');
-    return response.data;
-  }
-
-  async getMyProgress(): Promise<ApiResponse<any[]>> {
-    const response = await this.api.get('/doctor/progress');
-    return response.data;
-  }
-
-  async getOnlineDoctors(): Promise<ApiResponse<any[]>> {
-    const response = await this.api.get('/doctor/online-doctors');
-    return response.data;
-  }
-
+  
   async getConnectionRequests(): Promise<ApiResponse<any[]>> {
     const response = await this.api.get('/doctor/connection-requests');
     return response.data;
   }
 
-  async updateOnlineStatus(isOnline: boolean): Promise<ApiResponse<any>> {
-    const response = await this.api.put('/doctor/online-status', { isOnline });
+  async updateConnectionStatus(patientId: string, status: 'active' | 'terminated'): Promise<ApiResponse<any>> {
+    const response = await this.api.put(`/patients/${patientId}/status`, { status });
+    return response.data;
+  }
+
+  async getMyProgress(): Promise<ApiResponse<any[]>> {
+    const response = await this.api.get('/doctor/my-progress');
     return response.data;
   }
 
   async getSuggestions(): Promise<ApiResponse<any[]>> {
-    const response = await this.api.get('/doctor/suggestions');
+    const response = await this.api.get('/suggestions');
+    return response.data;
+  }
+  
+  async createSuggestion(suggestionData: {
+    patientId: string;
+    suggestion: string;
+    type: 'exercise' | 'form' | 'schedule' | 'general';
+    priority: 'low' | 'medium' | 'high';
+  }): Promise<ApiResponse<any>> {
+    const response = await this.api.post('/suggestions', suggestionData);
     return response.data;
   }
 
-  async createSuggestion(suggestion: any): Promise<ApiResponse<any>> {
-    const response = await this.api.post('/doctor/suggestions', suggestion);
+  async getDoctors(): Promise<ApiResponse<Doctor[]>> {
+    const response = await this.api.get('/doctor/doctors');
+    return response.data;
+  }
+  
+  async getOnlineDoctors(): Promise<ApiResponse<Doctor[]>> {
+    const response = await this.api.get('/doctor/online-doctors');
     return response.data;
   }
 
-  async getPatientConnectionStatus(): Promise<ApiResponse<{
-    isConnected: boolean;
-    doctor: {
-      id: string;
-      name: string;
-      email: string;
-      specialization?: string;
-      isOnline: boolean;
-      lastSeen: string | null;
-    } | null;
-    status: string | null;
-    connectionDate: string | null;
-  }>> {
-    const response = await this.api.get('/doctor/connection-status');
+  async assignPatient(patientId: string, reason: string): Promise<ApiResponse<any>> {
+    const response = await this.api.post('/doctor/assign-patient', { patientId, reason });
     return response.data;
   }
-
-  // Activity endpoints
-  async getActivityFeed(options?: {
-    limit?: number;
-    offset?: number;
-    type?: string;
-    visibility?: string;
-  }): Promise<ApiResponse<any[]>> {
-    const params = new URLSearchParams();
-    if (options?.limit) params.append('limit', options.limit.toString());
-    if (options?.offset) params.append('offset', options.offset.toString());
-    if (options?.type) params.append('type', options.type);
-    if (options?.visibility) params.append('visibility', options.visibility);
-    
-    const response = await this.api.get(`/activities?${params}`);
+  
+  async requestDoctorConnection(doctorId: string, reason: string): Promise<ApiResponse<any>> {
+    const response = await this.api.post('/doctor/request-connection', { doctorId, reason });
     return response.data;
   }
-
-  async getRecentActivity(limit: number = 10): Promise<ApiResponse<any[]>> {
-    const response = await this.api.get(`/activities/recent?limit=${limit}`);
+  
+  async disconnectFromDoctor(): Promise<ApiResponse<any>> {
+    const response = await this.api.post('/doctor/disconnect');
+    return response.data;
+  }
+  
+  async updateOnlineStatus(isOnline: boolean): Promise<ApiResponse<any>> {
+    const response = await this.api.post('/user/online-status', { isOnline });
+    return response.data;
+  }
+  
+  async cancelConnectionRequest(): Promise<ApiResponse<any>> {
+    const response = await this.api.post('/doctor/cancel-connection');
     return response.data;
   }
 
   // Notifications
   async getNotifications(): Promise<ApiResponse<Notification[]>> {
     const response = await this.api.get('/notifications');
+    return response.data;
+  }
+  
+  async getPatientConnectionStatus(): Promise<ApiResponse<any>> {
+    const response = await this.api.get('/doctor/patient/connection-status');
     return response.data;
   }
 

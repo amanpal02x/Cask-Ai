@@ -1,270 +1,154 @@
-import math
 import numpy as np
 
-# ----------------------------
-# Enhanced utility functions
-# ----------------------------
 def calculate_angle(a, b, c):
-    """Calculate angle between 3 points in degrees"""
-    if not all(isinstance(point, dict) for point in [a, b, c]):
-        # Handle array format landmarks
-        if len(a) >= 2 and len(b) >= 2 and len(c) >= 2:
-            ab = (a[0] - b[0], a[1] - b[1])
-            cb = (c[0] - b[0], c[1] - b[1])
+    a = np.array(a)
+    b = np.array(b)
+    c = np.array(c)
+
+    radians = np.arctan2(c[1]-b[1], c[0]-b[0]) - np.arctan2(a[1]-b[1], a[0]-b[0])
+    angle = np.abs(radians*180.0/np.pi)
+
+    if angle > 180:
+        angle = 360-angle
+
+    return angle
+
+def analyze_pose(landmarks, exercise, session_state=None):
+    if session_state is None:
+        session_state = {"rep_count": 0, "stage": "start", "consecutive_good_frames": 0, "total_accuracy": 0, "frame_count": 0}
+
+    rep_count = session_state.get("rep_count", 0)
+    stage = session_state.get("stage", "start")
+    consecutive_good_frames = session_state.get("consecutive_good_frames", 0)
+    total_accuracy = session_state.get("total_accuracy", 0)
+    frame_count = session_state.get("frame_count", 0)
+    
+    feedback = []
+    angles = {}
+    current_accuracy = 100
+
+    try:
+        # Check landmark visibility
+        visible_keypoints = [lm for lm in landmarks if lm.get('visibility', 0) > 0.5]
+        if len(visible_keypoints) < 15:
+            return {
+                "repCount": rep_count,
+                "angles": {},
+                "accuracy": 0,
+                "feedback": ["Position your full body in the camera frame"],
+                "session_state": session_state
+            }
+
+        if exercise == "squat":
+            hip = [landmarks[23]['x'], landmarks[23]['y']]
+            knee = [landmarks[25]['x'], landmarks[25]['y']]
+            ankle = [landmarks[27]['x'], landmarks[27]['y']]
+            shoulder = [landmarks[11]['x'], landmarks[11]['y']]
+            
+            knee_angle = calculate_angle(hip, knee, ankle)
+            back_angle = calculate_angle(shoulder, hip, knee)
+            angles["knee"] = knee_angle
+            
+            # Accuracy calculation based on ideal ranges
+            # Ideal knee angle at bottom is < 100, ideal back angle is > 150
+            if stage == "down":
+                deviation = max(0, knee_angle - 100)
+                current_accuracy -= (deviation * 0.5)
+            
+            if back_angle < 140:
+                current_accuracy -= 20
+                feedback.append("Keep your chest up and back straight")
+
+            if knee_angle > 160:
+                if stage == "down": rep_count += 1
+                stage = "up"
+            elif knee_angle < 110:
+                stage = "down"
+            
+            if stage == "down" and knee_angle > 120:
+                feedback.append("Go lower! Aim for thighs parallel to floor")
+
+        elif exercise == "pushup":
+            shoulder = [landmarks[11]['x'], landmarks[11]['y']]
+            elbow = [landmarks[13]['x'], landmarks[13]['y']]
+            wrist = [landmarks[15]['x'], landmarks[15]['y']]
+            hip = [landmarks[23]['x'], landmarks[23]['y']]
+            ankle = [landmarks[27]['x'], landmarks[27]['y']]
+            
+            elbow_angle = calculate_angle(shoulder, elbow, wrist)
+            body_alignment = calculate_angle(shoulder, hip, ankle)
+            angles["elbow"] = elbow_angle
+            
+            if stage == "down":
+                deviation = max(0, elbow_angle - 90)
+                current_accuracy -= (deviation * 0.4)
+            
+            if body_alignment < 165:
+                current_accuracy -= 25
+                feedback.append("Keep your hips in line with your body")
+
+            if elbow_angle > 160:
+                if stage == "down": rep_count += 1
+                stage = "up"
+            elif elbow_angle < 100:
+                stage = "down"
+
+        elif exercise == "plank":
+            shoulder = [landmarks[11]['x'], landmarks[11]['y']]
+            hip = [landmarks[23]['x'], landmarks[23]['y']]
+            ankle = [landmarks[27]['x'], landmarks[27]['y']]
+            
+            body_angle = calculate_angle(shoulder, hip, ankle)
+            angles["body_alignment"] = body_angle
+            
+            deviation = abs(180 - body_angle)
+            current_accuracy = max(0, 100 - (deviation * 2))
+            
+            if body_angle < 165:
+                feedback.append("Don't drop your hips")
+            elif body_angle > 195:
+                feedback.append("Hips too high!")
+            else:
+                consecutive_good_frames += 1
+                if consecutive_good_frames >= 60:
+                    rep_count += 1
+                    consecutive_good_frames = 0
+        
         else:
-            return 0
-    else:
-        # Handle dict format landmarks
-        ab = (a['x'] - b['x'], a['y'] - b['y'])
-        cb = (c['x'] - b['x'], c['y'] - b['y'])
+            feedback.append(f"Analyzing {exercise}...")
 
-    dot = ab[0]*cb[0] + ab[1]*cb[1]
-    mag_ab = math.sqrt(ab[0]**2 + ab[1]**2)
-    mag_cb = math.sqrt(cb[0]**2 + cb[1]**2)
-
-    if mag_ab * mag_cb == 0:
-        return 0
-
-    angle = math.acos(max(-1, min(1, dot / (mag_ab * mag_cb))))
-    return int(math.degrees(angle))
-
-def calculate_distance(a, b):
-    """Calculate distance between two points"""
-    if isinstance(a, dict) and isinstance(b, dict):
-        return math.sqrt((a['x'] - b['x'])**2 + (a['y'] - b['y'])**2)
-    elif len(a) >= 2 and len(b) >= 2:
-        return math.sqrt((a[0] - b[0])**2 + (a[1] - b[1])**2)
-    return 0
-
-def get_landmark_coords(landmarks, index):
-    """Get coordinates for a landmark, handling different formats"""
-    if isinstance(landmarks, list) and len(landmarks) > index:
-        landmark = landmarks[index]
-        if isinstance(landmark, dict):
-            return {'x': landmark.get('x', 0), 'y': landmark.get('y', 0), 'z': landmark.get('z', 0)}
-        elif isinstance(landmark, (list, tuple)) and len(landmark) >= 2:
-            return {'x': landmark[0], 'y': landmark[1], 'z': landmark[2] if len(landmark) > 2 else 0}
-    return {'x': 0, 'y': 0, 'z': 0}
-
-def is_landmark_visible(landmark):
-    """Check if landmark is visible"""
-    if isinstance(landmark, dict):
-        return landmark.get('visibility', 1) > 0.5
-    return True
-
-# ----------------------------
-# Exercise-specific analysis classes
-# ----------------------------
-class ExerciseAnalyzer:
-    def __init__(self, exercise_type):
-        self.exercise_type = exercise_type
-        self.rep_count = 0
-        self.is_down_position = False
-        self.previous_angles = {}
-        self.movement_threshold = 5  # degrees
-        
-    def analyze_frame(self, landmarks):
-        """Analyze a single frame of pose data"""
-        angles = self.calculate_angles(landmarks)
-        feedback = []
-        score = 100
-        
-        # Exercise-specific analysis
-        if self.exercise_type == "squat":
-            score, feedback = self._analyze_squat(landmarks, angles, feedback, score)
-        elif self.exercise_type == "pushup":
-            score, feedback = self._analyze_pushup(landmarks, angles, feedback, score)
-        elif self.exercise_type == "lunge":
-            score, feedback = self._analyze_lunge(landmarks, angles, feedback, score)
-        elif self.exercise_type == "plank":
-            score, feedback = self._analyze_plank(landmarks, angles, feedback, score)
-        
-        # Update rep counting
-        self._update_rep_count(landmarks, angles)
-        
-        # Store previous angles for movement detection
-        self.previous_angles = angles.copy()
-        
+    except (IndexError, KeyError):
         return {
-            "exercise": self.exercise_type,
-            "accuracy": max(score, 0),
-            "feedback": feedback if feedback else ["Good form! 🎉"],
-            "angles": angles,
-            "repCount": self.rep_count,
-            "isCorrectForm": score > 70,
-            "confidence": score / 100
+            "repCount": rep_count,
+            "angles": {},
+            "accuracy": 0,
+            "feedback": ["Position yourself correctly"],
+            "session_state": session_state
         }
-    
-    def calculate_angles(self, landmarks):
-        """Calculate all relevant angles for the exercise"""
-        angles = {}
-        
-        if self.exercise_type == "squat":
-            # Knee angles
-            angles['left_knee'] = calculate_angle(
-                get_landmark_coords(landmarks, 24),  # left hip
-                get_landmark_coords(landmarks, 26),  # left knee
-                get_landmark_coords(landmarks, 28)   # left ankle
-            )
-            angles['right_knee'] = calculate_angle(
-                get_landmark_coords(landmarks, 23),  # right hip
-                get_landmark_coords(landmarks, 25),  # right knee
-                get_landmark_coords(landmarks, 27)   # right ankle
-            )
-            
-        elif self.exercise_type == "pushup":
-            # Elbow angles
-            angles['left_elbow'] = calculate_angle(
-                get_landmark_coords(landmarks, 12),  # left shoulder
-                get_landmark_coords(landmarks, 14),  # left elbow
-                get_landmark_coords(landmarks, 16)   # left wrist
-            )
-            angles['right_elbow'] = calculate_angle(
-                get_landmark_coords(landmarks, 11),  # right shoulder
-                get_landmark_coords(landmarks, 13),  # right elbow
-                get_landmark_coords(landmarks, 15)   # right wrist
-            )
-            
-        elif self.exercise_type == "lunge":
-            # Knee angles for lunging leg
-            angles['front_knee'] = calculate_angle(
-                get_landmark_coords(landmarks, 24),  # hip
-                get_landmark_coords(landmarks, 26),  # knee
-                get_landmark_coords(landmarks, 28)   # ankle
-            )
-            angles['back_knee'] = calculate_angle(
-                get_landmark_coords(landmarks, 23),  # hip
-                get_landmark_coords(landmarks, 25),  # knee
-                get_landmark_coords(landmarks, 27)   # ankle
-            )
-            
-        elif self.exercise_type == "plank":
-            # Body alignment angles
-            angles['shoulder_hip_ankle'] = calculate_angle(
-                get_landmark_coords(landmarks, 12),  # shoulder
-                get_landmark_coords(landmarks, 24),  # hip
-                get_landmark_coords(landmarks, 28)   # ankle
-            )
-        
-        return angles
-    
-    def _analyze_squat(self, landmarks, angles, feedback, score):
-        """Analyze squat form"""
-        left_knee = angles.get('left_knee', 0)
-        right_knee = angles.get('right_knee', 0)
-        
-        # Knee angle analysis
-        if not (70 <= left_knee <= 120):
-            feedback.append(f"Left knee angle: {left_knee}° (target: 70-120°)")
-            score -= 15
-        if not (70 <= right_knee <= 120):
-            feedback.append(f"Right knee angle: {right_knee}° (target: 70-120°)")
-            score -= 15
-            
-        # Symmetry check
-        knee_diff = abs(left_knee - right_knee)
-        if knee_diff > 10:
-            feedback.append(f"Knee symmetry off by {knee_diff}°")
-            score -= 10
-            
-        # Hip alignment
-        left_hip = get_landmark_coords(landmarks, 24)
-        right_hip = get_landmark_coords(landmarks, 23)
-        hip_diff = abs(left_hip['y'] - right_hip['y'])
-        if hip_diff > 0.05:  # 5% of frame height
-            feedback.append("Keep hips level")
-            score -= 10
-            
-        return score, feedback
-    
-    def _analyze_pushup(self, landmarks, angles, feedback, score):
-        """Analyze pushup form"""
-        left_elbow = angles.get('left_elbow', 0)
-        right_elbow = angles.get('right_elbow', 0)
-        
-        # Elbow angle analysis
-        if not (70 <= left_elbow <= 120):
-            feedback.append(f"Left elbow angle: {left_elbow}° (target: 70-120°)")
-            score -= 15
-        if not (70 <= right_elbow <= 120):
-            feedback.append(f"Right elbow angle: {right_elbow}° (target: 70-120°)")
-            score -= 15
-            
-        # Body alignment
-        shoulder = get_landmark_coords(landmarks, 12)
-        hip = get_landmark_coords(landmarks, 24)
-        ankle = get_landmark_coords(landmarks, 28)
-        
-        # Check if body is straight
-        shoulder_hip_ankle_angle = calculate_angle(shoulder, hip, ankle)
-        if not (170 <= shoulder_hip_ankle_angle <= 190):
-            feedback.append("Keep body straight")
-            score -= 15
-            
-        return score, feedback
-    
-    def _analyze_lunge(self, landmarks, angles, feedback, score):
-        """Analyze lunge form"""
-        front_knee = angles.get('front_knee', 0)
-        back_knee = angles.get('back_knee', 0)
-        
-        # Front knee should be at 90 degrees
-        if not (80 <= front_knee <= 100):
-            feedback.append(f"Front knee angle: {front_knee}° (target: 90°)")
-            score -= 20
-            
-        # Back knee should be close to ground
-        if back_knee > 120:
-            feedback.append("Lower back knee closer to ground")
-            score -= 15
-            
-        return score, feedback
-    
-    def _analyze_plank(self, landmarks, angles, feedback, score):
-        """Analyze plank form"""
-        shoulder_hip_ankle = angles.get('shoulder_hip_ankle', 0)
-        
-        # Body should be straight
-        if not (170 <= shoulder_hip_ankle <= 190):
-            feedback.append("Keep body straight - engage core")
-            score -= 20
-            
-        return score, feedback
-    
-    def _update_rep_count(self, landmarks, angles):
-        """Update rep count based on movement patterns"""
-        if not self.previous_angles:
-            return
-            
-        # Exercise-specific rep counting
-        if self.exercise_type == "squat":
-            # Count reps based on knee angle changes
-            current_knee = (angles.get('left_knee', 0) + angles.get('right_knee', 0)) / 2
-            previous_knee = (self.previous_angles.get('left_knee', 0) + self.previous_angles.get('right_knee', 0)) / 2
-            
-            # Rep completed when going from low to high position
-            if not self.is_down_position and current_knee < 90:
-                self.is_down_position = True
-            elif self.is_down_position and current_knee > 120:
-                self.is_down_position = False
-                self.rep_count += 1
-                
-        elif self.exercise_type == "pushup":
-            # Count reps based on elbow angle changes
-            current_elbow = (angles.get('left_elbow', 0) + angles.get('right_elbow', 0)) / 2
-            previous_elbow = (self.previous_angles.get('left_elbow', 0) + self.previous_angles.get('right_elbow', 0)) / 2
-            
-            # Rep completed when going from low to high position
-            if not self.is_down_position and current_elbow < 90:
-                self.is_down_position = True
-            elif self.is_down_position and current_elbow > 150:
-                self.is_down_position = False
-                self.rep_count += 1
 
-# ----------------------------
-# Main analysis function
-# ----------------------------
-def analyze_pose(landmarks, exercise="squat"):
-    """Enhanced pose analysis with rep counting and detailed feedback"""
-    analyzer = ExerciseAnalyzer(exercise)
-    return analyzer.analyze_frame(landmarks)
+    # Clamp accuracy
+    current_accuracy = max(0, min(100, int(current_accuracy)))
+    
+    # Update rolling average for improvement tracking
+    frame_count += 1
+    total_accuracy += current_accuracy
+    
+    new_session_state = {
+        "rep_count": rep_count,
+        "stage": stage,
+        "consecutive_good_frames": consecutive_good_frames,
+        "total_accuracy": total_accuracy,
+        "frame_count": frame_count,
+        "average_accuracy": total_accuracy / frame_count
+    }
+
+    if not feedback:
+        feedback = ["Keep going, great form!"]
+    
+    return {
+        "repCount": rep_count,
+        "angles": angles,
+        "accuracy": current_accuracy,
+        "feedback": feedback,
+        "session_state": new_session_state
+    }

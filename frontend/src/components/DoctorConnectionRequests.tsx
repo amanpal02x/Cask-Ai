@@ -53,7 +53,7 @@ const DoctorConnectionRequests: React.FC = () => {
     // Listen for WebSocket notifications
     const handleNotification = (event: CustomEvent) => {
       const notification = event.detail;
-      if (notification.type === 'connection_request') {
+      if (notification.type === 'connection_request' || notification.type === 'connection_update') {
         fetchConnectionRequests();
       }
     };

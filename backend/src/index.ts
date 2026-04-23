@@ -13,6 +13,7 @@ import exerciseResultsRoutes from './routes/exerciseResults';
 import activityRoutes from './routes/activities';
 import notificationRoutes from './routes/notifications';
 import patientDoctorRoutes from './routes/patientDoctor';
+import chatRoutes from './routes/chat';
 import websocketService from './services/websocketService';
 
 dotenv.config();
@@ -54,6 +55,7 @@ app.use('/api/sessions', sessionRoutes);
 app.use('/api/exercise', exerciseRoutes);
 app.use('/api/results', exerciseResultsRoutes);
 app.use('/api/activities', activityRoutes);
+app.use('/api/chat', chatRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/doctor', patientDoctorRoutes);
 

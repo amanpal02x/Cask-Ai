@@ -3,7 +3,7 @@ import User from '../models/User';
 
 export const getProfile = async (req: Request, res: Response) => {
   try {
-    const user = await User.findById(req.user?.id);
+    const user = await User.findById((req as any).user?.id);
     if (!user) {
       return res.status(404).json({ success: false, error: 'User not found' });
     }
@@ -33,7 +33,7 @@ export const updateProfile = async (req: Request, res: Response) => {
       licenseNumber: string;
     }>;
 
-    const user = await User.findByIdAndUpdate(req.user?.id, updates, { new: true });
+    const user = await User.findByIdAndUpdate((req as any).user?.id, updates, { new: true });
     if (!user) {
       return res.status(404).json({ success: false, error: 'User not found' });
     }

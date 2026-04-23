@@ -4,6 +4,7 @@ import PatientDoctor from '../models/PatientDoctor';
 import User from '../models/User';
 import SessionService from '../services/sessionService';
 import NotificationService from '../services/notificationService';
+import WebSocketService from '../services/websocketService';
 
 export const getPatients = async (req: Request, res: Response) => {
   try {
@@ -26,6 +27,7 @@ export const getPatients = async (req: Request, res: Response) => {
     .sort({ lastInteraction: -1 });
 
     const patients = patientRelations.map(relation => ({
+      relationshipId: (relation as any)._id.toString(),
       id: relation.patientId._id.toString(),
       name: (relation.patientId as any).name,
       email: (relation.patientId as any).email,
@@ -230,6 +232,20 @@ export const requestDoctorConnection = async (req: Request, res: Response) => {
         category: 'connection_request'
       }
     });
+
+    // Send real-time notification via WebSocket
+    await WebSocketService.sendNotification(doctorId, {
+      type: 'connection_request',
+      title: 'New Connection Request',
+      message: `A patient has requested to connect with you for exercise guidance.`,
+      data: {
+        patientId: patientId,
+        relationshipId: (newRelation as any)._id.toString(),
+        priority: 'medium',
+        category: 'connection_request'
+      },
+      timestamp: new Date().getTime()
+    });
     
     const response: ApiResponse<{ success: boolean }> = {
       success: true,
@@ -358,6 +374,21 @@ export const updateConnectionStatus = async (req: Request, res: Response) => {
         priority: 'high',
         category: 'connection_update'
       }
+    });
+
+    // Send real-time notification via WebSocket
+    await WebSocketService.sendNotification(patientId, {
+      type: 'connection_update',
+      title: `Connection ${status === 'active' ? 'Approved' : status === 'suspended' ? 'Suspended' : 'Terminated'}`,
+      message: notificationMessage,
+      data: {
+        doctorId: doctorId,
+        relationshipId: (relation as any)._id.toString(),
+        status: status,
+        priority: 'high',
+        category: 'connection_update'
+      },
+      timestamp: new Date().getTime()
     });
     
     const response: ApiResponse<{ success: boolean }> = {
@@ -997,6 +1028,7 @@ export const getPatientConnectionStatus = async (req: Request, res: Response) =>
         isOnline: (relation.doctorId as any).isOnline || false,
         lastSeen: (relation.doctorId as any).lastSeen?.toISOString() || null
       } : null,
+      relationshipId: relation ? (relation as any)._id.toString() : null,
       status: relation?.status || null,
       connectionDate: relation?.startedAt?.toISOString() || null
     };

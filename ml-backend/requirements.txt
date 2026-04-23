@@ -1,0 +1,15 @@
+mediapipe
+torch
+numpy
+pandas
+scikit-learn
+matplotlib
+fastapi
+uvicorn
+pydantic
+starlette
+anyio
+click
+requests
+tensorflow
+opencv-python

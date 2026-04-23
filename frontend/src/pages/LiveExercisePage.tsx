@@ -11,7 +11,8 @@ import {
   AlertCircle,
   Target,
   Clock,
-  Activity
+  Activity,
+  TrendingUp
 } from 'lucide-react';
 import { Exercise, RealTimeFeedback, ExerciseSession } from '../types';
 import apiService from '../services/api';
@@ -23,6 +24,7 @@ import { Pose } from '@mediapipe/pose';
 import { Camera as MediaPipeCamera } from '@mediapipe/camera_utils';
 import { drawConnectors, drawLandmarks } from '@mediapipe/drawing_utils';
 import { POSE_CONNECTIONS } from '@mediapipe/pose';
+import ExerciseSimulator from '../components/ExerciseSimulator';
 
 const LiveExercisePage: React.FC = () => {
   const { exerciseId } = useParams<{ exerciseId: string }>();
@@ -65,30 +67,49 @@ const LiveExercisePage: React.FC = () => {
           console.error('Failed to fetch exercise:', error);
           setError('Failed to load exercise details: ' + (error instanceof Error ? error.message : 'Unknown error'));
         }
-      } else if (exerciseId === 'new') {
-        // For new exercises, create a default exercise object
-        setExercise({
-          id: 'default',
-          name: 'Live Exercise Session',
-          description: 'Real-time exercise analysis session',
-          targetMuscles: ['full body'],
-          instructions: [
-            'Position yourself in front of the camera',
-            'Start the session when ready',
-            'Follow the real-time feedback for proper form'
-          ],
-          difficulty: 'beginner',
-          duration: 10,
-          category: 'strength',
-          videoUrl: '',
-          imageUrl: ''
-        });
+      } else if (exerciseId === 'new' || !exerciseId) {
+        // Just show the selector or handle the lack of an ID
+        setShowExerciseSelector(true);
       }
       setLoading(false);
     };
 
     fetchExercise();
   }, [exerciseId]);
+
+  const determineCurrentPosture = useCallback((landmarks: any[]) => {
+    // Simple posture detection based on landmark positions
+    const leftShoulder = landmarks[11];
+    const rightShoulder = landmarks[12];
+    const leftHip = landmarks[23];
+    const rightHip = landmarks[24];
+    const leftKnee = landmarks[25];
+    const rightKnee = landmarks[26];
+
+    if (!leftShoulder || !rightShoulder || !leftHip || !rightHip) {
+      setCurrentPosture('Unknown');
+      return;
+    }
+
+    // Dynamic label based on exercise
+    const exName = exercise?.name.toLowerCase() || '';
+    
+    // Calculate angles and positions for posture detection
+    const kneeHeight = (leftKnee?.y || 0) + (rightKnee?.y || 0) / 2;
+    const hipHeight = (leftHip.y + rightHip.y) / 2;
+
+    if (exName.includes('squat') && kneeHeight > hipHeight - 0.1) {
+      setCurrentPosture('Squatting');
+    } else if (exName.includes('pushup') && Math.abs(leftShoulder.y - leftHip.y) < 0.2) {
+      setCurrentPosture('Pushing Up');
+    } else if (exName.includes('plank')) {
+      setCurrentPosture('Planking');
+    } else if (exName.includes('lunge')) {
+      setCurrentPosture('Lunging');
+    } else {
+      setCurrentPosture('Standing');
+    }
+  }, [exercise]);
 
   const analyzePose = useCallback(async (landmarks: any[]) => {
     if (!session) return;
@@ -113,13 +134,15 @@ const LiveExercisePage: React.FC = () => {
         }
 
         // Set feedback
-        const feedbackMessage = response.data.feedback.join(' ');    
+        const rawFeedback = response.data.feedback || [];
+        const feedbackMessage = rawFeedback.join(' ');    
         setFeedback({
-          isCorrect: response.data.accuracy > 70,
+          isCorrect: response.data.isCorrectForm ?? (response.data.accuracy > 70),
           message: feedbackMessage,
-          confidence: response.data.accuracy / 100,
-          timestamp: Date.now()
-        });
+          confidence: (response.data.confidence ?? response.data.accuracy / 100),
+          timestamp: Date.now(),
+          suggestions: rawFeedback // Store the raw list for components
+        } as any);
 
         // Determine current posture based on landmarks
         determineCurrentPosture(landmarks);
@@ -127,7 +150,7 @@ const LiveExercisePage: React.FC = () => {
     } catch (error) {
       console.error('Error analyzing pose:', error);
     }
-  }, [session]);
+  }, [session, determineCurrentPosture]);
 
   const initializeMediaPipe = useCallback(() => {
     if (!videoRef.current || !canvasRef.current) {
@@ -160,7 +183,7 @@ const LiveExercisePage: React.FC = () => {
 
     try {
       const pose = new Pose({
-        locateFile: (file) => {
+        locateFile: (file: string) => {
           return `https://cdn.jsdelivr.net/npm/@mediapipe/pose/${file}`;
         }
       });
@@ -174,7 +197,7 @@ const LiveExercisePage: React.FC = () => {
         minTrackingConfidence: 0.5,
       });
 
-      pose.onResults((results) => {
+      pose.onResults((results: any) => {
         if (!canvasRef.current || !videoRef.current) return;
 
         const canvasCtx = canvasRef.current.getContext('2d');
@@ -201,7 +224,7 @@ const LiveExercisePage: React.FC = () => {
           });
 
           // Analyze pose if session is active
-          if (isRecording && session) {
+          if (isRecording && session && !isPaused) {
             analyzePose(results.poseLandmarks);
           }
         } else {
@@ -251,7 +274,7 @@ const LiveExercisePage: React.FC = () => {
     } catch (error) {
       console.error('Error initializing MediaPipe:', error);
     }
-  }, [isRecording, session, analyzePose]);
+  }, [isRecording, isPaused, session, analyzePose]);
 
   // Initialize MediaPipe Pose
   useEffect(() => {
@@ -329,46 +352,6 @@ const LiveExercisePage: React.FC = () => {
     };
   }, [isRecording, isPaused]);
 
-  // Debug cameraActive state changes
-  useEffect(() => {
-    console.log('cameraActive state changed:', cameraActive);
-  }, [cameraActive]);
-
-
-  const determineCurrentPosture = (landmarks: any[]) => {
-    // Simple posture detection based on landmark positions
-    const leftShoulder = landmarks[11];
-    const rightShoulder = landmarks[12];
-    const leftHip = landmarks[23];
-    const rightHip = landmarks[24];
-    const leftKnee = landmarks[25];
-    const rightKnee = landmarks[26];
-    // const leftAnkle = landmarks[27];
-    // const rightAnkle = landmarks[28];
-
-    if (!leftShoulder || !rightShoulder || !leftHip || !rightHip) {
-      setCurrentPosture('Unknown');
-      return;
-    }
-
-    // Calculate angles and positions for posture detection
-    const shoulderDistance = Math.abs(leftShoulder.y - rightShoulder.y);
-    const hipDistance = Math.abs(leftHip.y - rightHip.y);
-    const kneeHeight = (leftKnee?.y || 0) + (rightKnee?.y || 0) / 2;
-    const hipHeight = (leftHip.y + rightHip.y) / 2;
-
-    if (kneeHeight > hipHeight - 0.1) {
-      setCurrentPosture('Squatting');
-    } else if (shoulderDistance < 0.05 && hipDistance < 0.05) {
-      setCurrentPosture('Standing Straight');
-    } else if (leftShoulder.y < rightShoulder.y - 0.05) {
-      setCurrentPosture('Leaning Left');
-    } else if (rightShoulder.y < leftShoulder.y - 0.05) {
-      setCurrentPosture('Leaning Right');
-    } else {
-      setCurrentPosture('Standing');
-    }
-  };
 
   const startCamera = async () => {
     try {
@@ -383,63 +366,14 @@ const LiveExercisePage: React.FC = () => {
         audio: false
       });
 
-      console.log('Camera stream obtained:', stream);
-      console.log('Video tracks:', stream.getVideoTracks());
-
       if (videoRef.current) {
         const video = videoRef.current;
         video.srcObject = stream;
         streamRef.current = stream;
         
-        console.log('Video element setup:', {
-          srcObject: video.srcObject,
-          videoWidth: video.videoWidth,
-          videoHeight: video.videoHeight,
-          readyState: video.readyState,
-          currentTime: video.currentTime,
-          style: {
-            display: video.style.display,
-            opacity: video.style.opacity,
-            visibility: video.style.visibility
-          },
-          computedStyle: {
-            display: window.getComputedStyle(video).display,
-            opacity: window.getComputedStyle(video).opacity,
-            visibility: window.getComputedStyle(video).visibility
-          }
-        });
-        
-        // Add multiple event listeners to ensure video loads properly
-        
         const handleLoadedMetadata = () => {
-          console.log('Video metadata loaded:', {
-            videoWidth: video.videoWidth,
-            videoHeight: video.videoHeight,
-            readyState: video.readyState,
-            duration: video.duration
-          });
-          
-          // Ensure video is visible immediately
-          video.style.display = 'block';
-          video.style.opacity = '1';
-          video.style.visibility = 'visible';
-          
-          console.log('Video styles set after metadata loaded:', {
-            display: video.style.display,
-            opacity: video.style.opacity,
-            visibility: video.style.visibility,
-            computedDisplay: window.getComputedStyle(video).display,
-            computedOpacity: window.getComputedStyle(video).opacity,
-            computedVisibility: window.getComputedStyle(video).visibility
-          });
-          
-          // Force video to play
           video.play().then(() => {
-            console.log('Video started playing successfully');
-            console.log('Setting cameraActive to true');
             setCameraActive(true);
-            
-            // Set up canvas dimensions after video is ready
             setTimeout(() => {
               if (canvasRef.current) {
                 const container = canvasRef.current.parentElement;
@@ -447,133 +381,43 @@ const LiveExercisePage: React.FC = () => {
                   const rect = container.getBoundingClientRect();
                   canvasRef.current.width = rect.width;
                   canvasRef.current.height = rect.height;
-                  console.log('Canvas dimensions set:', rect.width, 'x', rect.height);
                 }
               }
             }, 100);
-            
           }).catch((playError) => {
             console.error('Failed to play video:', playError);
-            setError('Failed to start video playback: ' + playError.message);
+            setError('Failed to start video playback');
           });
         };
 
-        const handleCanPlay = () => {
-          console.log('Video can play');
-        };
-
-        const handlePlaying = () => {
-          console.log('Video is playing');
-          // Ensure video is visible when it starts playing
-          video.style.display = 'block';
-          video.style.opacity = '1';
-          video.style.visibility = 'visible';
-        };
-
-        const handleError = (error: Event) => {
-          console.error('Video error:', error);
-          setError('Video playback error occurred: ' + (error instanceof Error ? error.message : 'Unknown error'));
-        };
-
-        // Add event listeners
         video.addEventListener('loadedmetadata', handleLoadedMetadata);
-        video.addEventListener('canplay', handleCanPlay);
-        video.addEventListener('playing', handlePlaying);
-        video.addEventListener('error', handleError);
-        
-        // Cleanup function
-        const cleanup = () => {
-          video.removeEventListener('loadedmetadata', handleLoadedMetadata);
-          video.removeEventListener('canplay', handleCanPlay);
-          video.removeEventListener('playing', handlePlaying);
-          video.removeEventListener('error', handleError);
-        };
-        
-        // Store cleanup function for later use
-        (video as any)._cameraCleanup = cleanup;
-        
-        // Fallback: Force video to be visible after a short delay
-        setTimeout(() => {
-          if (video.srcObject && !cameraActive) {
-            console.log('Fallback: Forcing video visibility');
-            video.style.display = 'block';
-            video.style.opacity = '1';
-            video.style.visibility = 'visible';
-            setCameraActive(true);
-          }
-          
-          // Additional debugging
-          console.log('Fallback check - Video element state:', {
-            srcObject: video.srcObject,
-            cameraActive: cameraActive,
-            videoInDOM: document.contains(video),
-            videoParent: video.parentElement,
-            videoDimensions: {
-              width: video.offsetWidth,
-              height: video.offsetHeight,
-              clientWidth: video.clientWidth,
-              clientHeight: video.clientHeight
-            }
-          });
-        }, 1000);
+        (video as any)._cameraCleanup = () => video.removeEventListener('loadedmetadata', handleLoadedMetadata);
       }
     } catch (error) {
       console.error('Error accessing camera:', error);
-      let errorMessage = 'Failed to access camera. ';
-      
-      if (error instanceof Error) {
-        if (error.name === 'NotAllowedError') {
-          errorMessage += 'Camera permission denied. Please allow camera access and refresh the page.';
-        } else if (error.name === 'NotFoundError') {
-          errorMessage += 'No camera found. Please connect a camera and try again.';
-        } else if (error.name === 'NotReadableError') {
-          errorMessage += 'Camera is already in use by another application.';
-        } else {
-          errorMessage += error.message;
-        }
-      }
-      
-      setError(errorMessage);
+      setError('Failed to access camera. Please ensure permissions are granted.');
     }
   };
 
   const stopCamera = () => {
-    console.log('Stopping camera...');
-    
     if (streamRef.current) {
-      streamRef.current.getTracks().forEach(track => {
-        console.log('Stopping track:', track.kind);
-        track.stop();
-      });
+      streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
     }
     
     if (videoRef.current) {
-      // Clean up event listeners
       if ((videoRef.current as any)._cameraCleanup) {
         (videoRef.current as any)._cameraCleanup();
       }
-      
       videoRef.current.srcObject = null;
-      videoRef.current.style.display = 'none';
-      videoRef.current.style.opacity = '0';
     }
     
-    // Clean up MediaPipe resources
     if (poseRef.current) {
-      try {
-        poseRef.current.close();
-      } catch (error) {
-        console.warn('Error closing pose in stopCamera:', error);
-      }
+      poseRef.current.close();
       poseRef.current = null;
     }
     if (cameraRef.current) {
-      try {
-        cameraRef.current.stop();
-      } catch (error) {
-        console.warn('Error stopping camera in stopCamera:', error);
-      }
+      cameraRef.current.stop();
       cameraRef.current = null;
     }
     
@@ -581,13 +425,13 @@ const LiveExercisePage: React.FC = () => {
     setPoseDetected(false);
     setAccuracy(undefined);
     setCurrentPosture('');
-    
-    console.log('Camera stopped successfully');
   };
 
   const handleExerciseSelect = (selectedExercise: Exercise) => {
     setExercise(selectedExercise);
     setShowExerciseSelector(false);
+    // Update URL without reload - path must match Route in App.tsx
+    navigate(`/patient/exercise/${selectedExercise.id}`, { replace: true });
   };
 
   const startSession = async () => {
@@ -597,10 +441,7 @@ const LiveExercisePage: React.FC = () => {
         return;
       }
 
-      console.log('Starting session for exercise:', exercise.id);
       const response = await apiService.startSession(exercise.id);
-      console.log('Session response:', response);
-      
       if (response.success && response.data) {
         setSession(response.data);
         setIsRecording(true);
@@ -608,13 +449,12 @@ const LiveExercisePage: React.FC = () => {
         setSessionTime(0);
         setRepCount(0);
         setFeedback(null);
-        console.log('Session started successfully');
       } else {
-        setError('Failed to start session: ' + (response.message || 'Unknown error'));
+        setError('Failed to start session');
       }
     } catch (error) {
       console.error('Failed to start session:', error);
-      setError('Failed to start exercise session: ' + (error instanceof Error ? error.message : 'Unknown error'));
+      setError('Failed to start exercise session');
     }
   };
 
@@ -630,9 +470,6 @@ const LiveExercisePage: React.FC = () => {
       setIsRecording(false);
       setIsPaused(false);
       setSession(null);
-      setSessionTime(0);
-      setRepCount(0);
-      setFeedback(null);
       stopCamera();
       navigate('/patient/dashboard');
     } catch (error) {
@@ -664,7 +501,6 @@ const LiveExercisePage: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="bg-white shadow rounded-lg">
         <div className="px-4 py-5 sm:p-6">
           <div className="flex items-center justify-between">
@@ -672,19 +508,11 @@ const LiveExercisePage: React.FC = () => {
               <h1 className="text-2xl font-bold text-gray-900">
                 {exercise ? exercise.name : 'Live Exercise Session'}
               </h1>
-              {exercise && (
-                <p className="mt-1 text-sm text-gray-500">
-                  {exercise.description}
-                </p>
-              )}
+              {exercise && <p className="mt-1 text-sm text-gray-500">{exercise.description}</p>}
             </div>
-            <div className="flex items-center space-x-4">
-              <div className="text-right">
-                <div className="text-2xl font-bold text-primary-600">
-                  {formatTime(sessionTime)}
-                </div>
-                <div className="text-sm text-gray-500">Session Time</div>
-              </div>
+            <div className="text-right">
+              <div className="text-2xl font-bold text-primary-600">{formatTime(sessionTime)}</div>
+              <div className="text-sm text-gray-500">Session Time</div>
             </div>
           </div>
         </div>
@@ -696,13 +524,12 @@ const LiveExercisePage: React.FC = () => {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Video Feed */}
-        <div className="lg:col-span-2">
-          <div className="bg-white shadow rounded-lg">
-            <div className="px-4 py-5 sm:p-6">
-              <div className="aspect-video bg-gray-900 rounded-lg overflow-hidden relative">
-                {/* Always render video element but conditionally show it */}
+      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
+        {/* Main Camera Feed - Spans 2 columns on extra large screens */}
+        <div className="xl:col-span-2 order-1">
+          <div className="bg-white shadow rounded-lg h-full">
+            <div className="px-4 py-5 sm:p-6 h-full flex flex-col">
+              <div className="flex-grow aspect-video bg-gray-900 rounded-lg overflow-hidden relative mb-4">
                 <div className="relative w-full h-full">
                   <video
                     ref={videoRef}
@@ -710,14 +537,7 @@ const LiveExercisePage: React.FC = () => {
                     playsInline
                     muted
                     className="w-full h-full object-cover"
-                    style={{ 
-                      width: '100%', 
-                      height: '100%',
-                      objectFit: 'cover',
-                      backgroundColor: '#000',
-                      display: cameraActive ? 'block' : 'none',
-                      opacity: cameraActive ? 1 : 0
-                    }}
+                    style={{ display: cameraActive ? 'block' : 'none' }}
                   />
                   <canvas
                     ref={canvasRef}
@@ -725,319 +545,182 @@ const LiveExercisePage: React.FC = () => {
                     style={{ zIndex: 10, display: cameraActive ? 'block' : 'none' }}
                   />
                   
-                  {/* Pose detection indicator */}
                   {poseDetected && cameraActive && (
-                    <div className="absolute top-4 right-4 flex items-center space-x-2">
+                    <div className="absolute top-4 right-4 flex items-center space-x-2 bg-black bg-opacity-50 px-3 py-1 rounded-full">
                       <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                      <span className="text-white text-xs font-medium">Pose Detected</span>
-                    </div>
-                  )}
-                  
-                  {/* Current posture indicator */}
-                  {currentPosture && cameraActive && (
-                    <div className="absolute bottom-4 left-4 bg-black bg-opacity-50 text-white px-3 py-1 rounded-md text-sm">
-                      Posture: {currentPosture}
+                      <span className="text-white text-xs font-medium">
+                        {currentPosture ? `${currentPosture} Detected` : 'Pose Detected'}
+                      </span>
                     </div>
                   )}
                 </div>
                 
-                {/* Show placeholder when camera is not active */}
                 {!cameraActive && (
                   <div className="absolute inset-0 flex items-center justify-center">
                     <div className="text-center">
                       <Camera className="mx-auto h-12 w-12 text-gray-400" />
                       <h3 className="mt-2 text-sm font-medium text-gray-900">Camera Off</h3>
-                      <p className="mt-1 text-sm text-gray-500">
-                        Click "Start Camera" to begin
-                      </p>
+                      <button onClick={startCamera} className="mt-4 inline-flex items-center px-4 py-2 bg-primary-600 text-white rounded-md">
+                        Start Camera
+                      </button>
                     </div>
                   </div>
                 )}
                 
-                {/* Recording indicator */}
                 {isRecording && (
-                  <div className="absolute top-4 left-4 flex items-center space-x-2">
+                  <div className="absolute top-4 left-4 flex items-center space-x-2 bg-black bg-opacity-50 px-3 py-1 rounded-full">
                     <div className="w-3 h-3 bg-red-500 rounded-full animate-pulse"></div>
-                    <span className="text-white text-sm font-medium">
-                      {isPaused ? 'PAUSED' : 'RECORDING'}
-                    </span>
+                    <span className="text-white text-sm font-medium">{isPaused ? 'PAUSED' : 'LIVE'}</span>
                   </div>
                 )}
               </div>
 
-              {/* Camera Controls */}
-              <div className="mt-4 flex justify-center space-x-4">
-                {!cameraActive ? (
-                  <button
-                    onClick={startCamera}
-                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-primary-600 hover:bg-primary-700"
-                  >
-                    <Camera className="h-4 w-4 mr-2" />
-                    Start Camera
+              <div className="flex justify-between items-center">
+                {cameraActive ? (
+                  <button onClick={stopCamera} className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 text-sm">
+                    <CameraOff className="h-4 w-4 mr-2" /> Stop Camera
+                  </button>
+                ) : <div />}
+                
+                {!isRecording ? (
+                  <button onClick={startSession} disabled={!cameraActive || !exercise} className={`px-8 py-2 rounded-md text-white font-medium ${cameraActive && exercise ? 'bg-primary-600 hover:bg-primary-700' : 'bg-gray-400 cursor-not-allowed'}`}>
+                    <Play className="inline h-5 w-5 mr-2" /> Start Session
                   </button>
                 ) : (
-                  <button
-                    onClick={stopCamera}
-                    className="inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                  >
-                    <CameraOff className="h-4 w-4 mr-2" />
-                    Stop Camera
-                  </button>
+                  <div className="flex space-x-3">
+                    <button onClick={pauseSession} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 text-sm">
+                      {isPaused ? <Play className="inline h-4 w-4 mr-2" /> : <Pause className="inline h-4 w-4 mr-2" />} {isPaused ? 'Resume' : 'Pause'}
+                    </button>
+                    <button onClick={endSession} className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 text-sm">
+                      <Square className="inline h-4 w-4 mr-2" /> End
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Controls and Feedback */}
-        <div className="space-y-6">
-          {/* Exercise Selection */}
-          {!isRecording && (
-            <div className="bg-white shadow rounded-lg">
-              <div className="px-4 py-5 sm:p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-lg font-medium text-gray-900">Exercise Selection</h3>
-                  <button
-                    onClick={() => setShowExerciseSelector(!showExerciseSelector)}
-                    className="inline-flex items-center px-3 py-2 border border-gray-300 shadow-sm text-sm leading-4 font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                  >
-                    {exercise ? 'Change Exercise' : 'Select Exercise'}
-                  </button>
-                </div>
-                
-                {exercise ? (
-                  <div className="border rounded-lg p-4 bg-gray-50">
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <h4 className="text-sm font-medium text-gray-900">{exercise.name}</h4>
-                        <p className="text-sm text-gray-600">{exercise.description}</p>
-                        <div className="mt-2 flex items-center space-x-4 text-xs text-gray-500">
-                          <span className="capitalize">{exercise.difficulty}</span>
-                          <span>{exercise.duration} min</span>
-                          <span>{exercise.targetMuscles.join(', ')}</span>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="text-center py-6">
-                    <Target className="mx-auto h-8 w-8 text-gray-400" />
-                    <p className="mt-2 text-sm text-gray-500">
-                      Select an exercise to begin your session
-                    </p>
-                  </div>
+        {/* Sidebar - Spans 2 columns on extra large screens */}
+        <div className="xl:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6 order-2">
+          {/* Exercise Guide Column */}
+          <div className="space-y-6">
+            <div className="bg-white shadow rounded-lg p-5 h-full">
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-lg font-medium text-gray-900">Exercise Guide</h3>
+                {!isRecording && (
+                  <button onClick={() => setShowExerciseSelector(true)} className="text-primary-600 text-sm font-medium">Change</button>
                 )}
               </div>
-            </div>
-          )}
-
-          {/* Exercise Selector Modal */}
-          {showExerciseSelector && (
-            <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
-              <div className="relative top-20 mx-auto p-5 border w-11/12 md:w-3/4 lg:w-1/2 shadow-lg rounded-md bg-white">
-                <div className="mt-3">
-                  <div className="flex items-center justify-between mb-4">
-                    <h3 className="text-lg font-medium text-gray-900">Select Exercise</h3>
-                    <button
-                      onClick={() => setShowExerciseSelector(false)}
-                      className="text-gray-400 hover:text-gray-600"
-                    >
-                      <svg className="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                      </svg>
-                    </button>
-                  </div>
-                  <ExerciseSelector
-                    onExerciseSelect={handleExerciseSelect}
-                    selectedExerciseId={exercise?.id}
+              
+              {exercise && (
+                <div className="mb-4">
+                  <ExerciseSimulator 
+                    exerciseName={exercise.name} 
+                    isRecording={isRecording && !isPaused} 
                   />
                 </div>
-              </div>
-            </div>
-          )}
+              )}
 
-          {/* Session Controls */}
-          <div className="bg-white shadow rounded-lg">
-            <div className="px-4 py-5 sm:p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Session Controls</h3>
-              
-              <div className="space-y-3">
-                {!isRecording ? (
-                  <button
-                    onClick={startSession}
-                    disabled={!cameraActive || !exercise}
-                    className="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    <Play className="h-4 w-4 mr-2" />
-                    Start Session
-                  </button>
-                ) : (
-                  <>
-                    <button
-                      onClick={pauseSession}
-                      className="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-yellow-600 hover:bg-yellow-700"
-                    >
-                      {isPaused ? (
-                        <>
-                          <Play className="h-4 w-4 mr-2" />
-                          Resume
-                        </>
-                      ) : (
-                        <>
-                          <Pause className="h-4 w-4 mr-2" />
-                          Pause
-                        </>
-                      )}
-                    </button>
-                    
-                    <button
-                      onClick={endSession}
-                      className="w-full inline-flex items-center justify-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700"
-                    >
-                      <Square className="h-4 w-4 mr-2" />
-                      End Session
-                    </button>
-                    
-                    <button
-                      onClick={resetSession}
-                      className="w-full inline-flex items-center justify-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                    >
-                      <RotateCcw className="h-4 w-4 mr-2" />
-                      Reset
-                    </button>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Real-time Stats */}
-          <div className="bg-white shadow rounded-lg">
-            <div className="px-4 py-5 sm:p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Session Stats</h3>
-              
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <Target className="h-5 w-5 text-gray-400 mr-2" />
-                    <span className="text-sm font-medium text-gray-700">Reps</span>
-                  </div>
-                  <span className="text-2xl font-bold text-primary-600">{repCount}</span>
-                </div>
-                
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center">
-                    <Clock className="h-5 w-5 text-gray-400 mr-2" />
-                    <span className="text-sm font-medium text-gray-700">Duration</span>
-                  </div>
-                  <span className="text-2xl font-bold text-primary-600">
-                    {formatTime(sessionTime)}
-                  </span>
-                </div>
-
-                {accuracy !== null && (
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <Activity className="h-5 w-5 text-gray-400 mr-2" />
-                      <span className="text-sm font-medium text-gray-700">Accuracy</span>
+              {!isRecording ? (
+                exercise && (
+                  <div className="flex items-center p-3 bg-gray-50 rounded-md">
+                    <Target className="h-6 w-6 text-primary-600 mr-4" />
+                    <div>
+                      <div className="text-sm font-medium text-gray-900">{exercise.name}</div>
+                      <div className="text-xs text-gray-500">{exercise.targetMuscles.join(', ')}</div>
                     </div>
-                    <span className={`text-2xl font-bold ${
-                      accuracy !== undefined && accuracy >= 80 ? 'text-green-600' : 
-                      accuracy !== undefined && accuracy >= 60 ? 'text-yellow-600' : 'text-red-600'
-                    }`}>
-                      {accuracy !== undefined ? Math.round(accuracy) : 0}%
-                    </span>
                   </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {/* Real-time Feedback */}
-          <div className="bg-white shadow rounded-lg">
-            <div className="px-4 py-5 sm:p-6">
-              <h3 className="text-lg font-medium text-gray-900 mb-4">Real-time Feedback</h3>
-              
-              {feedback ? (
-                <div className={`p-4 rounded-lg ${
-                  feedback.isCorrect 
-                    ? 'bg-green-50 border border-green-200' 
-                    : 'bg-red-50 border border-red-200'
-                }`}>
-                  <div className="flex items-center">
-                    {feedback.isCorrect ? (
-                      <CheckCircle className="h-5 w-5 text-green-600 mr-2" />
-                    ) : (
-                      <AlertCircle className="h-5 w-5 text-red-600 mr-2" />
-                    )}
-                    <span className={`text-sm font-medium ${
-                      feedback.isCorrect ? 'text-green-800' : 'text-red-800'
-                    }`}>
-                      {feedback.message}
-                    </span>
-                  </div>
-                  <div className="mt-2 text-xs text-gray-500">
-                    Confidence: {Math.round(feedback.confidence * 100)}%
-                  </div>
-                </div>
-              ) : poseDetected ? (
-                <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
-                  <div className="flex items-center">
-                    <CheckCircle className="h-5 w-5 text-blue-600 mr-2" />
-                    <span className="text-sm font-medium text-blue-800">
-                      Pose detected successfully
-                    </span>
-                  </div>
-                  <div className="mt-2 text-xs text-gray-500">
-                    Start your session to begin posture analysis
-                  </div>
-                </div>
+                )
               ) : (
-                <div className="text-center py-6">
-                  <Activity className="mx-auto h-8 w-8 text-gray-400" />
-                  <p className="mt-2 text-sm text-gray-500">
-                    {cameraActive ? 'Position yourself in front of the camera' : 'Start your camera to receive real-time feedback'}
-                  </p>
-                </div>
+                accuracy !== undefined && (
+                  <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-center animate-pulse">
+                    <TrendingUp className="h-5 w-5 text-green-600 mr-3" />
+                    <p className="text-xs text-green-800 font-medium">
+                      {accuracy > 70 ? 'Keep it up!' : 'Focus on form!'}
+                    </p>
+                  </div>
+                )
               )}
             </div>
           </div>
 
-          {/* Exercise Form Guidance */}
-          <ExerciseFormGuidance
-            exercise={exercise}
-            isSessionActive={isRecording}
-            currentAccuracy={accuracy}
-          />
-
-          {/* Posture Guidance */}
-          <PostureGuidance
-            accuracy={accuracy}
-            currentPosture={currentPosture}
-            feedback={feedback ? [feedback.message] : []}
-            isRecording={isRecording}
-          />
-
-          {/* Exercise Instructions */}
-          {exercise && (
-            <div className="bg-white shadow rounded-lg">
-              <div className="px-4 py-5 sm:p-6">
-                <h3 className="text-lg font-medium text-gray-900 mb-4">Instructions</h3>
-                <div className="space-y-2">
-                  {exercise.instructions.map((instruction, index) => (
-                    <div key={index} className="flex items-start">
-                      <span className="flex-shrink-0 w-6 h-6 bg-primary-100 text-primary-600 rounded-full flex items-center justify-center text-sm font-medium mr-3">
-                        {index + 1}
-                      </span>
-                      <p className="text-sm text-gray-700">{instruction}</p>
-                    </div>
-                  ))}
+          {/* Analysis & Reps Column */}
+          <div className="space-y-6">
+            <div className="bg-white shadow rounded-lg p-5 h-full">
+              <h3 className="text-lg font-medium text-gray-900 mb-4 flex items-center">
+                <Activity className="h-5 w-5 mr-2 text-primary-500" /> Analysis
+              </h3>
+              
+              <div className="flex flex-col items-center">
+                <div className="relative h-28 w-28 mb-4">
+                  <svg className="h-full w-full" viewBox="0 0 100 100">
+                    <circle className="text-gray-100 stroke-current" strokeWidth="8" cx="50" cy="50" r="40" fill="transparent" />
+                    <circle
+                      className={`${accuracy && accuracy > 80 ? 'text-green-500' : accuracy && accuracy > 60 ? 'text-amber-500' : 'text-red-500'} stroke-current transition-all duration-1000`}
+                      strokeWidth="8" strokeDasharray={251.2} strokeDashoffset={251.2 - (251.2 * (accuracy || 0)) / 100}
+                      strokeLinecap="round" cx="50" cy="50" r="40" fill="transparent"
+                    />
+                  </svg>
+                  <div className="absolute inset-0 flex flex-col items-center justify-center">
+                    <span className="text-3xl font-bold text-gray-900">{repCount}</span>
+                    <span className="text-[9px] font-bold text-gray-500 uppercase tracking-widest">Reps</span>
+                  </div>
                 </div>
+
+                <div className={`w-full p-3 rounded-lg border mb-4 ${feedback?.isCorrect ? 'bg-green-50 border-green-200' : feedback ? 'bg-amber-50 border-amber-200' : 'bg-gray-50 border-gray-200'}`}>
+                  <div className="flex items-center mb-1">
+                    {feedback?.isCorrect ? <CheckCircle className="h-4 w-4 text-green-500 mr-2" /> : feedback ? <AlertCircle className="h-4 w-4 text-amber-500 mr-2" /> : <Clock className="h-4 w-4 text-gray-400 mr-2" />}
+                    <span className="text-xs font-bold text-gray-900 uppercase">{feedback ? (feedback.isCorrect ? 'Good Form' : 'Adjust Form') : 'Awaiting'}</span>
+                  </div>
+                  <p className="text-[11px] text-gray-600 line-clamp-2 leading-tight">{feedback ? feedback.message : 'Position yourself correctly.'}</p>
+                </div>
+
+                {accuracy !== undefined && (
+                  <div className="w-full">
+                    <div className="flex justify-between text-[10px] font-bold uppercase text-gray-500 mb-1">
+                      <span>Accuracy</span>
+                      <span>{accuracy}%</span>
+                    </div>
+                    <div className="w-full bg-gray-100 rounded-full h-1.5 overflow-hidden">
+                      <div className={`h-full transition-all duration-500 ${accuracy > 80 ? 'bg-green-500' : accuracy > 60 ? 'bg-amber-500' : 'bg-red-500'}`} style={{ width: `${accuracy}%` }}></div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Lower Full-Width Posture Guidance */}
+        <div className="xl:col-span-4 order-3">
+          {exercise && (
+            <PostureGuidance 
+              currentPosture={currentPosture} 
+              exerciseName={exercise.name} 
+              accuracy={accuracy}
+              feedback={(feedback as any)?.suggestions || []}
+              isRecording={isRecording}
+            />
           )}
         </div>
       </div>
+
+      {showExerciseSelector && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4">
+            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => setShowExerciseSelector(false)}></div>
+            <div className="bg-white rounded-lg overflow-hidden shadow-xl transform transition-all sm:max-w-3xl sm:w-full z-50">
+              <ExerciseSelector 
+                onExerciseSelect={handleExerciseSelect} 
+                selectedExerciseId={exercise?.id}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+      
+      {exercise && <ExerciseFormGuidance exercise={exercise} isSessionActive={isRecording} currentAccuracy={accuracy} />}
     </div>
   );
 };

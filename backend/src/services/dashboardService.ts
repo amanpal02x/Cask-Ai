@@ -252,8 +252,10 @@ export class DashboardService {
           $match: {
             patientId: userId,
             status: 'completed',
-            startTime: { $lt: twoWeeksAgo },
-            startTime: { $gte: new Date(twoWeeksAgo.getTime() - 14 * 24 * 60 * 60 * 1000) }
+            startTime: { 
+              $lt: twoWeeksAgo, 
+              $gte: new Date(twoWeeksAgo.getTime() - 14 * 24 * 60 * 60 * 1000) 
+            }
           }
         },
         { $group: { _id: null, averageScore: { $avg: '$averageScore' } } }
@@ -288,8 +290,10 @@ export class DashboardService {
           $match: {
             doctorId,
             status: 'completed',
-            startTime: { $lt: twoWeeksAgo },
-            startTime: { $gte: new Date(twoWeeksAgo.getTime() - 14 * 24 * 60 * 60 * 1000) }
+            startTime: { 
+              $lt: twoWeeksAgo, 
+              $gte: new Date(twoWeeksAgo.getTime() - 14 * 24 * 60 * 60 * 1000) 
+            }
           }
         },
         { $group: { _id: null, averageScore: { $avg: '$averageScore' } } }

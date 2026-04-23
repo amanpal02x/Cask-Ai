@@ -26,6 +26,46 @@ export interface Exercise {
   targetMuscles: string[];
   imageUrl?: string;
   videoUrl?: string;
+  category: 'strength' | 'cardio' | 'flexibility' | 'balance';
+  equipment?: string[];
+  caloriesPerMinute?: number;
+  poseLandmarks?: {
+    keyPoints: string[];
+    angles: Array<{
+      name: string;
+      points: string[];
+      targetRange: number[];
+    }>;
+    repDetection: {
+      trigger: string;
+      direction: 'up' | 'down';
+      threshold: number;
+    };
+  };
+  formGuidance?: {
+    correctForm: {
+      description: string;
+      keyPoints: string[];
+      commonMistakes: string[];
+      tips: string[];
+    };
+    visualGuide: {
+      referenceImage?: string;
+      referenceVideo?: string;
+      landmarks: Array<{
+        name: string;
+        position: string;
+        importance: 'critical' | 'important' | 'optional';
+      }>;
+    };
+    datasetInfo: {
+      source: string;
+      sampleCount: number;
+      accuracy: number;
+      lastUpdated: string;
+      version: string;
+    };
+  };
   createdAt?: string;
   updatedAt?: string;
 }
@@ -35,14 +75,15 @@ export interface ExerciseSession {
   id: string;
   exerciseId: string;
   userId: string;
+  doctorId?: string;
   startTime: string;
   endTime?: string;
   duration: number; // in seconds
-  status: 'active' | 'completed' | 'cancelled';
-  score?: number;
+  status: 'active' | 'completed' | 'cancelled' | 'paused';
+  score?: number | null;
   reps: number;
-  feedback?: string;
-  videoUrl?: string;
+  feedback?: any;
+  videoUrl?: string | null;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -53,6 +94,8 @@ export interface DashboardStats {
   averageScore: number;
   totalExercises: number;
   streakDays: number;
+  weeklyProgress: number;
+  improvementRate: number;
 }
 
 export interface ChartData {

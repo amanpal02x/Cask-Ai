@@ -1,26 +1,43 @@
-import math
+import numpy as np
+from model_loader import get_model
 
-def calculate_angle(a, b, c):
-    ab = (a['x'] - b['x'], a['y'] - b['y'])
-    cb = (c['x'] - b['x'], c['y'] - b['y'])
-    dot = ab[0]*cb[0] + ab[1]*cb[1]
-    mag_ab = math.sqrt(ab[0]**2 + ab[1]**2)
-    mag_cb = math.sqrt(cb[0]**2 + cb[1]**2)
-    return math.degrees(math.acos(dot / (mag_ab * mag_cb)))
+SEQUENCE_LENGTH = 30
 
-def analyze_pose(landmarks):
-    left_knee_angle = calculate_angle(landmarks[24], landmarks[26], landmarks[28])
-    right_knee_angle = calculate_angle(landmarks[23], landmarks[25], landmarks[27])
+# In-memory buffer per session to avoid cross-talk
+session_buffers = {}
 
-    feedback = "Good posture"
-    if left_knee_angle < 80 or right_knee_angle < 80:
-        feedback = "Bend your knees more"
-
-    return {
-        "accuracy": 85,
-        "feedback": feedback,
-        "angles": {
-            "left_knee": left_knee_angle,
-            "right_knee": right_knee_angle
-        }
-    }
+def predict_form(landmarks, exercise, session_id="default"):
+    # Ensure landmarks are in the flat array format expected by LSTM
+    # (num_landmarks * 4) e.g. 33 * 4 = 132
+    flat_landmarks = []
+    for lm in landmarks:
+        flat_landmarks.extend([lm['x'], lm['y'], lm['z'], lm.get('visibility', 1.0)])
+    
+    # Use sessionId to manage sequence buffer
+    buffer_key = f"{session_id}_{exercise}"
+    if buffer_key not in session_buffers:
+        session_buffers[buffer_key] = []
+    
+    seq = session_buffers[buffer_key]
+    seq.append(flat_landmarks)
+    
+    if len(seq) < SEQUENCE_LENGTH:
+        return "waiting", 0.0
+    
+    if len(seq) > SEQUENCE_LENGTH:
+        seq.pop(0)
+    
+    model = get_model(exercise)
+    if model is None:
+        return "no_model", 0.0
+        
+    X = np.array(seq)
+    X = np.expand_dims(X, axis=0) # Add batch dimension
+    
+    try:
+        pred = model.predict(X, verbose=0)[0][0]
+        form = "correct" if pred > 0.5 else "incorrect"
+        return form, float(pred)
+    except Exception as e:
+        print(f"Error during LSTM prediction: {e}")
+        return "error", 0.0

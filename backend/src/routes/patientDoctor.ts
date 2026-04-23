@@ -64,6 +64,7 @@ router.get('/progress', getAllPatientProgress);
 router.get('/suggestions', getSuggestions);
 router.post('/suggestions', createSuggestion);
 router.get('/connection-status', getPatientConnectionStatus);
+router.get('/patient/connection-status', getPatientConnectionStatus); // Add new route for patient connection status
 router.get('/connection-requests', getConnectionRequests);
 router.put('/online-status', updateUserOnlineStatus);
 router.post('/disconnect', disconnectFromDoctor);

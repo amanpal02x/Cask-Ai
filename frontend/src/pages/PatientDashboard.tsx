@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import { 
   Play, 
@@ -15,6 +15,8 @@ import { useAuth } from '../hooks/useAuth';
 import { DashboardStats, ExerciseSession } from '../types';
 import apiService from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
+import NotificationsSection from '../components/NotificationsSection';
+import ChatWidget from '../components/ChatWidget';
 
 const PatientDashboard: React.FC = () => {
   const { user } = useAuth();
@@ -22,6 +24,7 @@ const PatientDashboard: React.FC = () => {
   // const [exercises, setExercises] = useState<Exercise[]>([]);
   const [recentSessions, setRecentSessions] = useState<ExerciseSession[]>([]);
   const [loading, setLoading] = useState(true);
+  const chatWidgetRef = useRef<any>(null);
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -44,6 +47,12 @@ const PatientDashboard: React.FC = () => {
 
     fetchDashboardData();
   }, []);
+
+  const handleOpenChat = (relationshipId: string) => {
+    if (chatWidgetRef.current) {
+      chatWidgetRef.current.openChat(relationshipId);
+    }
+  };
 
   if (loading) {
     return (
@@ -296,26 +305,10 @@ const PatientDashboard: React.FC = () => {
       </div>
 
       {/* Notifications */}
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-4 py-5 sm:p-6">
-          <div className="flex items-center">
-            <Bell className="h-5 w-5 text-gray-400 mr-2" />
-            <h3 className="text-lg leading-6 font-medium text-gray-900">
-              Notifications & Messages
-            </h3>
-          </div>
-          <div className="mt-5">
-            <div className="text-center py-6">
-              <Bell className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No new notifications</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                You'll receive updates from your doctor and system notifications here.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <NotificationsSection onOpenChat={handleOpenChat} />
 
+      {/* Chat Widget */}
+      <ChatWidget ref={chatWidgetRef} />
     </div>
   );
 };

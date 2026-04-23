@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { Pose } from "@mediapipe/pose";
 import { Camera } from "@mediapipe/camera_utils";
-import { apiService } from "../services/api";
+import apiService from "../services/api";
 
 export default function usePoseAnalyzer(sessionId: string) {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -25,14 +25,13 @@ export default function usePoseAnalyzer(sessionId: string) {
     pose.onResults(async (results) => {
       if (results.poseLandmarks) {
         try {
-          // Transform MediaPipe landmarks to number[][] format
+          // Convert poseLandmarks to the format expected by analyzePose
           const landmarks = results.poseLandmarks.map(landmark => [
             landmark.x,
             landmark.y,
             landmark.z,
             landmark.visibility || 0
           ]);
-          
           const res = await apiService.analyzePose(sessionId, landmarks);
           console.log("Backend response:", res);
         } catch (err) {

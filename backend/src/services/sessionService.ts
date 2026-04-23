@@ -1,5 +1,6 @@
 import { Types } from 'mongoose';
 import ExerciseSession, { IPoseFrame, IExerciseSession } from '../models/ExerciseSession';
+import { HydratedDocument } from 'mongoose';
 import Activity from '../models/Activity';
 import Notification from '../models/Notification';
 import PatientDoctor from '../models/PatientDoctor';
@@ -32,15 +33,15 @@ export class SessionService {
       startTime: new Date(),
       status: 'active',
       deviceInfo
-    });
+    }) as HydratedDocument<IExerciseSession>;
 
     await session.save();
 
     // Create activity log
-    await this.createActivity({
+    await SessionService.createActivity({
       userId: patientId,
       relatedUserId: doctorId,
-      sessionId: session._id.toString(),
+      sessionId: (session._id as Types.ObjectId).toString(),
       exerciseId,
       type: 'exercise_started',
       title: 'Exercise Session Started',
@@ -50,14 +51,14 @@ export class SessionService {
     });
 
     return {
-      id: session._id.toString(),
+      id: (session._id as Types.ObjectId).toString(),
       exerciseId: exerciseId,
       userId: patientId,
       doctorId,
       startTime: session.startTime.toISOString(),
-      endTime: null,
+      endTime: undefined,
       duration: 0,
-      status: session.status,
+      status: session.status as any,
       score: null,
       reps: 0,
       feedback: null,
@@ -84,7 +85,7 @@ export class SessionService {
       return null;
     }
 
-    const session = await ExerciseSession.findById(sessionId);
+    const session = await ExerciseSession.findById(sessionId) as HydratedDocument<IExerciseSession> | null;
     if (!session || session.status === 'completed') {
       return null;
     }
@@ -146,14 +147,14 @@ export class SessionService {
     }
 
     return {
-      id: session._id.toString(),
+      id: (session._id as Types.ObjectId).toString(),
       exerciseId: session.exerciseId.toString(),
       userId: session.patientId.toString(),
       doctorId: session.doctorId?.toString(),
       startTime: session.startTime.toISOString(),
-      endTime: session.endTime?.toISOString() || null,
+      endTime: session.endTime?.toISOString(),
       duration: session.duration || 0,
-      status: session.status,
+      status: session.status as any,
       score: session.averageScore || 0,
       reps: session.totalReps || 0,
       feedback: session.overallFeedback?.join(', ') || null,
@@ -187,20 +188,20 @@ export class SessionService {
       return null;
     }
 
-    const session = await ExerciseSession.findById(sessionId).populate('exerciseId', 'name description');
+    const session = await ExerciseSession.findById(sessionId).populate('exerciseId', 'name description') as any;
     if (!session) {
       return null;
     }
 
     return {
-      id: session._id.toString(),
+      id: (session._id as Types.ObjectId).toString(),
       exerciseId: session.exerciseId._id.toString(),
       userId: session.patientId.toString(),
       doctorId: session.doctorId?.toString(),
       startTime: session.startTime.toISOString(),
-      endTime: session.endTime?.toISOString() || null,
+      endTime: session.endTime?.toISOString(),
       duration: session.duration || 0,
-      status: session.status,
+      status: session.status as any,
       score: session.averageScore || null,
       reps: session.totalReps || 0,
       feedback: session.feedback ? {
@@ -238,21 +239,21 @@ export class SessionService {
     const session = await ExerciseSession.findById(sessionId)
       .populate('exerciseId', 'name description')
       .populate('patientId', 'name email')
-      .populate('doctorId', 'name email');
+      .populate('doctorId', 'name email') as any;
 
     if (!session) {
       return null;
     }
 
     return {
-      id: session._id.toString(),
+      id: (session._id as Types.ObjectId).toString(),
       exerciseId: session.exerciseId._id.toString(),
       userId: session.patientId._id.toString(),
       doctorId: session.doctorId?._id.toString(),
       startTime: session.startTime.toISOString(),
-      endTime: session.endTime?.toISOString() || null,
+      endTime: session.endTime?.toISOString(),
       duration: session.duration || 0,
-      status: session.status,
+      status: session.status as any,
       score: session.averageScore || 0,
       reps: session.totalReps || 0,
       feedback: session.overallFeedback?.join(', ') || null,
@@ -287,17 +288,17 @@ export class SessionService {
       .populate('doctorId', 'name email')
       .sort({ startTime: -1 })
       .skip(offset)
-      .limit(limit);
+      .limit(limit) as any[];
 
     return sessions.map(session => ({
-      id: session._id.toString(),
-      exerciseId: session.exerciseId._id.toString(),
-      userId: session.patientId.toString(),
-      doctorId: session.doctorId?._id.toString(),
+      id: (session._id as Types.ObjectId).toString(),
+      exerciseId: session.exerciseId ? (session.exerciseId._id || session.exerciseId).toString() : 'deleted_exercise',
+      userId: userId,
+      doctorId: session.doctorId ? (session.doctorId._id || session.doctorId).toString() : undefined,
       startTime: session.startTime.toISOString(),
-      endTime: session.endTime?.toISOString() || null,
+      endTime: session.endTime?.toISOString(),
       duration: session.duration || 0,
-      status: session.status,
+      status: session.status as any,
       score: session.averageScore || 0,
       reps: session.totalReps || 0,
       feedback: session.overallFeedback?.join(', ') || null,
@@ -332,17 +333,17 @@ export class SessionService {
       .populate('patientId', 'name email')
       .sort({ startTime: -1 })
       .skip(offset)
-      .limit(limit);
+      .limit(limit) as any[];
 
     return sessions.map(session => ({
-      id: session._id.toString(),
+      id: (session._id as Types.ObjectId).toString(),
       exerciseId: session.exerciseId._id.toString(),
       userId: session.patientId._id.toString(),
       doctorId: session.doctorId?.toString(),
       startTime: session.startTime.toISOString(),
-      endTime: session.endTime?.toISOString() || null,
+      endTime: session.endTime?.toISOString(),
       duration: session.duration || 0,
-      status: session.status,
+      status: session.status as any,
       score: session.averageScore || 0,
       reps: session.totalReps || 0,
       feedback: session.overallFeedback?.join(', ') || null,

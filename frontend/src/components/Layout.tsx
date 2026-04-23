@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { 
@@ -6,7 +6,6 @@ import {
   User, 
   Activity, 
   BarChart3, 
-  Bell, 
   LogOut, 
   Menu, 
   X,
@@ -14,6 +13,8 @@ import {
   FileText
 } from 'lucide-react';
 import SidebarDoctorConnection from './SidebarDoctorConnection';
+import ChatWidget from './ChatWidget';
+import NotificationCenter from './NotificationCenter';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -28,6 +29,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { user, logout } = useAuth();
   const location = useLocation();
   const navigate = useNavigate();
+  const chatWidgetRef = useRef<any>(null);
 
   useEffect(() => {
     const mq = window.matchMedia('(min-width: 1024px)');
@@ -56,6 +58,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const handleLogout = async () => {
     await logout();
     navigate('/login');
+  };
+
+  const handleOpenChat = (relationshipId: string) => {
+    if (chatWidgetRef.current) {
+      chatWidgetRef.current.openChat(relationshipId);
+    }
   };
 
   const isActive = (path: string) => {
@@ -185,12 +193,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             </div>
             <div className="ml-4 flex items-center md:ml-6">
               {/* Notifications */}
-              <button
-                type="button"
-                className="bg-white p-1 rounded-full text-gray-400 hover:text-gray-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-primary-500"
-              >
-                <Bell className="h-6 w-6" />
-              </button>
+              <NotificationCenter onOpenChat={handleOpenChat} />
 
               {/* Profile dropdown */}
               <div className="ml-3 relative">
@@ -223,13 +226,13 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
         {/* Page content */}
         <main className="flex-1">
-          <div className="py-6">
-            <div className="max-w-7xl mx-auto px-4 sm:px-6 md:px-8">
-              {children}
-            </div>
+          <div className="py-6 px-4 sm:px-6 md:px-8">
+            {children}
           </div>
         </main>
       </div>
+      {/* Floating chat widget mounted globally */}
+      <ChatWidget ref={chatWidgetRef} />
     </div>
   );
 };

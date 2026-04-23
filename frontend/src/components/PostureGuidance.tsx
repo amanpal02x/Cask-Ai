@@ -2,17 +2,19 @@ import React from 'react';
 import { CheckCircle, AlertTriangle, Info, Target } from 'lucide-react';
 
 interface PostureGuidanceProps {
-  accuracy: number | null | undefined;
+  accuracy?: number | null | undefined;
   currentPosture: string;
-  feedback: string[];
-  isRecording: boolean;
+  feedback?: string[];
+  isRecording?: boolean;
+  exerciseName?: string;
 }
 
 const PostureGuidance: React.FC<PostureGuidanceProps> = ({
   accuracy,
   currentPosture,
-  feedback,
-  isRecording
+  feedback = [],
+  isRecording = true,
+  exerciseName = ''
 }) => {
   const getAccuracyLevel = (acc: number) => {
     if (acc >= 85) return { level: 'excellent', color: 'text-green-600', bgColor: 'bg-green-50', borderColor: 'border-green-200' };
@@ -35,21 +37,29 @@ const PostureGuidance: React.FC<PostureGuidanceProps> = ({
       ],
       'Leaning Left': [
         'Shift weight slightly to the right',
-        'Engage your right side core muscles',
-        'Check if one leg is shorter than the other'
+        'Engage your right side core muscles'
       ],
       'Leaning Right': [
         'Shift weight slightly to the left',
-        'Engage your left side core muscles',
-        'Check if one leg is shorter than the other'
+        'Engage your left side core muscles'
       ],
-      'Standing': [
-        'Keep your spine in neutral alignment',
-        'Relax your shoulders away from your ears',
-        'Engage your core for stability'
+      'Pushing Up': [
+        'Keep your head and neck neutral',
+        'Don\'t let your hips sag',
+        'Exhale as you push away from the ground'
+      ],
+      'Planking': [
+        'Maintain a straight line from head to heels',
+        'Squeeze your glutes and core',
+        'Keep your gaze towards the floor'
+      ],
+      'Lunging': [
+        'Step forward far enough to keep knee over ankle',
+        'Keep your torso upright',
+        'Lower your back knee towards the ground'
       ]
     };
-    return tips[posture] || ['Focus on maintaining good posture'];
+    return tips[posture] || ['Focus on maintaining good form and posture'];
   };
 
   const getExerciseSpecificTips = () => {
@@ -61,7 +71,7 @@ const PostureGuidance: React.FC<PostureGuidanceProps> = ({
     ];
   };
 
-  if (!isRecording) {
+  if (!isRecording && !currentPosture) {
     return (
       <div className="bg-white shadow rounded-lg">
         <div className="px-4 py-5 sm:p-6">
@@ -84,13 +94,15 @@ const PostureGuidance: React.FC<PostureGuidanceProps> = ({
   return (
     <div className="bg-white shadow rounded-lg">
       <div className="px-4 py-5 sm:p-6">
-        <h3 className="text-lg font-medium text-gray-900 mb-4">Posture Guidance</h3>
+        <h3 className="text-lg font-medium text-gray-900 mb-4">
+          {exerciseName ? `${exerciseName} Guidance` : 'Posture Guidance'}
+        </h3>
         
         {/* Accuracy Status */}
         {accuracyInfo && accuracy !== null && accuracy !== undefined && (
           <div className={`p-4 rounded-lg border ${accuracyInfo.bgColor} ${accuracyInfo.borderColor} mb-4`}>
             <div className="flex items-center">
-              {accuracy! >= 70 ? (
+              {accuracy >= 70 ? (
                 <CheckCircle className={`h-5 w-5 ${accuracyInfo.color} mr-2`} />
               ) : (
                 <AlertTriangle className={`h-5 w-5 ${accuracyInfo.color} mr-2`} />
@@ -100,7 +112,7 @@ const PostureGuidance: React.FC<PostureGuidanceProps> = ({
               </span>
             </div>
             <div className="mt-2 text-xs text-gray-600">
-              Current accuracy: {Math.round(accuracy!)}%
+              Current accuracy: {Math.round(accuracy)}%
             </div>
           </div>
         )}
@@ -109,7 +121,7 @@ const PostureGuidance: React.FC<PostureGuidanceProps> = ({
         {currentPosture && currentPosture !== 'Unknown' && (
           <div className="mb-4">
             <h4 className="text-sm font-medium text-gray-700 mb-2">
-              Tips for {currentPosture}:
+              Detected: <span className="text-primary-600">{currentPosture}</span>
             </h4>
             <ul className="space-y-1">
               {postureTips.map((tip, index) => (
@@ -123,13 +135,13 @@ const PostureGuidance: React.FC<PostureGuidanceProps> = ({
         )}
 
         {/* Real-time Feedback */}
-        {feedback.length > 0 && (
+        {feedback && feedback.length > 0 && (
           <div className="mb-4">
-            <h4 className="text-sm font-medium text-gray-700 mb-2">Real-time Feedback:</h4>
+            <h4 className="text-sm font-medium text-gray-700 mb-2">Form Feedback:</h4>
             <div className="space-y-1">
               {feedback.map((item, index) => (
                 <div key={index} className={`p-2 rounded text-xs ${
-                  item.toLowerCase().includes('good') || item.toLowerCase().includes('great') 
+                  item.toLowerCase().includes('good') || item.toLowerCase().includes('great') || item.toLowerCase().includes('plank form')
                     ? 'bg-green-50 text-green-700' 
                     : 'bg-yellow-50 text-yellow-700'
                 }`}>
