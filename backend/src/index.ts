@@ -65,11 +65,15 @@ const server = createServer(app);
 // Initialize WebSocket service
 websocketService.initialize(server);
 
-server.listen(PORT, () => {
-  // eslint-disable-next-line no-console
-  console.log(`Server running on port ${PORT}`);
-  // eslint-disable-next-line no-console
-  console.log(`WebSocket server initialized`);
-});
+if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
+  server.listen(PORT, () => {
+    // eslint-disable-next-line no-console
+    console.log(`Server running on port ${PORT}`);
+    // eslint-disable-next-line no-console
+    console.log(`WebSocket server initialized`);
+  });
+}
+
+export default app;
 
 
