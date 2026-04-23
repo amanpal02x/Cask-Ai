@@ -6,7 +6,6 @@ import {
   Target, 
   Database, 
   Eye, 
-  Play,
   ExternalLink,
   TrendingUp,
   Calendar,

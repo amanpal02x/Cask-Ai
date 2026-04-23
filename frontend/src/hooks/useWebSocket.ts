@@ -11,6 +11,7 @@ interface WebSocketMessage {
   type: 'doctor_status_change' | 'patient_status_change' | 'notification' | 'relationship_message';
   data: any;
 }
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 
 export const useWebSocket = ({ userId, userRole, token }: UseWebSocketProps) => {
   const [isConnected, setIsConnected] = useState(false);

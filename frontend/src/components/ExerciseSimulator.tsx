@@ -22,7 +22,7 @@ const ExerciseSimulator: React.FC<ExerciseSimulatorProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const frameRef = useRef<number>(0);
-  const animationRef = useRef<number | null>(null);
+  // const animationRef = useRef<number | null>(null);
 
   // Procedural keyframes for different exercises (simplified skeletal points 0-1 range)
   const getFrames = (name: string): SkeletonFrame[] => {

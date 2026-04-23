@@ -6,7 +6,6 @@ import {
   Square, 
   Camera, 
   CameraOff, 
-  RotateCcw,
   CheckCircle,
   AlertCircle,
   Target,
@@ -478,12 +477,12 @@ const LiveExercisePage: React.FC = () => {
     }
   };
 
-  const resetSession = () => {
+  /* const resetSession = () => {
     setSessionTime(0);
     setRepCount(0);
     setFeedback(null);
     sessionStartTime.current = new Date();
-  };
+  }; */
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
