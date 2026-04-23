@@ -18,7 +18,7 @@ class WebSocketService {
   initialize(server: HTTPServer) {
     this.io = new SocketIOServer(server, {
       cors: {
-        origin: process.env.FRONTEND_URL || "http://localhost:3000",
+        origin: process.env.CLIENT_ORIGIN || "http://localhost:3000",
         methods: ["GET", "POST"]
       }
     });
