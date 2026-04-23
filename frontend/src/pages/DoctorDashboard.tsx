@@ -79,7 +79,7 @@ const DoctorDashboard: React.FC = () => {
         } catch {}
       })();
     };
-  }, []);
+  }, [updateStatus]);
 
   const handleOpenChat = (relationshipId: string) => {
     if (chatWidgetRef.current) {

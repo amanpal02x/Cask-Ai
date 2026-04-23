@@ -7,6 +7,7 @@ interface UseWebSocketProps {
   token: string;
 }
 
+// eslint-disable-next-line @typescript-eslint/no-unused-vars
 interface WebSocketMessage {
   type: 'doctor_status_change' | 'patient_status_change' | 'notification' | 'relationship_message';
   data: any;

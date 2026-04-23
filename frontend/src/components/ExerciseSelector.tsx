@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { 
   Search, 
   Filter, 
@@ -32,15 +32,7 @@ const ExerciseSelector: React.FC<ExerciseSelectorProps> = ({
   const [selectedCategory, setSelectedCategory] = useState<string>('');
   const [showFilters, setShowFilters] = useState(false);
 
-  useEffect(() => {
-    fetchExercises();
-  }, []);
-
-  useEffect(() => {
-    filterExercises();
-  }, [exercises, searchTerm, selectedDifficulty, selectedCategory]);
-
-  const fetchExercises = async () => {
+  const fetchExercises = useCallback(async () => {
     try {
       setLoading(true);
       const response = await apiService.getExercises();
@@ -52,9 +44,9 @@ const ExerciseSelector: React.FC<ExerciseSelectorProps> = ({
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const filterExercises = () => {
+  const filterExercises = useCallback(() => {
     let filtered = exercises;
 
     // Search filter
@@ -79,7 +71,15 @@ const ExerciseSelector: React.FC<ExerciseSelectorProps> = ({
     }
 
     setFilteredExercises(filtered);
-  };
+  }, [exercises, searchTerm, selectedDifficulty, selectedCategory]);
+
+  useEffect(() => {
+    fetchExercises();
+  }, [fetchExercises]);
+
+  useEffect(() => {
+    filterExercises();
+  }, [exercises, searchTerm, selectedDifficulty, selectedCategory, filterExercises]);
 
   const getDifficultyColor = (difficulty: string) => {
     switch (difficulty) {

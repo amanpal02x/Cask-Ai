@@ -11,5 +11,5 @@ starlette
 anyio
 click
 requests
-tensorflow
+tensorflow-cpu
 opencv-python

@@ -31,6 +31,7 @@ const NotificationsSection: React.FC<NotificationsSectionProps> = ({ onOpenChat 
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const { isConnected } = useWebSocket({
     userId: user?.id || '',
     userRole: (user?.role as any) || 'patient',
