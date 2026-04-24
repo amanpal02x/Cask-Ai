@@ -109,20 +109,20 @@ const ProgressPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Stats Overview */}
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
+      {/* Stats Overview - Premium Cards */}
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="bg-gradient-to-br from-green-50 to-white overflow-hidden shadow-sm border border-green-100 rounded-2xl transition-all hover:shadow-md">
+          <div className="p-6">
             <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <TrendingUp className="h-6 w-6 text-green-500" />
+              <div className="flex-shrink-0 p-3 bg-green-100 rounded-xl">
+                <TrendingUp className="h-6 w-6 text-green-600" />
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">
-                    Average Score
+                  <dt className="text-sm font-medium text-slate-500 uppercase tracking-wider">
+                    Avg Score
                   </dt>
-                  <dd className="text-lg font-medium text-gray-900">
+                  <dd className="text-2xl font-bold text-slate-900">
                     {getAverageScore()}%
                   </dd>
                 </dl>
@@ -131,18 +131,18 @@ const ProgressPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
+        <div className="bg-gradient-to-br from-blue-50 to-white overflow-hidden shadow-sm border border-blue-100 rounded-2xl transition-all hover:shadow-md">
+          <div className="p-6">
             <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <Target className="h-6 w-6 text-blue-500" />
+              <div className="flex-shrink-0 p-3 bg-blue-100 rounded-xl">
+                <Target className="h-6 w-6 text-blue-600" />
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">
+                  <dt className="text-sm font-medium text-slate-500 uppercase tracking-wider">
                     Total Reps
                   </dt>
-                  <dd className="text-lg font-medium text-gray-900">
+                  <dd className="text-2xl font-bold text-slate-900">
                     {getTotalReps()}
                   </dd>
                 </dl>
@@ -151,18 +151,18 @@ const ProgressPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
+        <div className="bg-gradient-to-br from-purple-50 to-white overflow-hidden shadow-sm border border-purple-100 rounded-2xl transition-all hover:shadow-md">
+          <div className="p-6">
             <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <Clock className="h-6 w-6 text-purple-500" />
+              <div className="flex-shrink-0 p-3 bg-purple-100 rounded-xl">
+                <Clock className="h-6 w-6 text-purple-600" />
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">
+                  <dt className="text-sm font-medium text-slate-500 uppercase tracking-wider">
                     Total Time
                   </dt>
-                  <dd className="text-lg font-medium text-gray-900">
+                  <dd className="text-2xl font-bold text-slate-900">
                     {formatDuration(getTotalDuration())}
                   </dd>
                 </dl>
@@ -171,18 +171,18 @@ const ProgressPage: React.FC = () => {
           </div>
         </div>
 
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
+        <div className="bg-gradient-to-br from-orange-50 to-white overflow-hidden shadow-sm border border-orange-100 rounded-2xl transition-all hover:shadow-md">
+          <div className="p-6">
             <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <Activity className="h-6 w-6 text-orange-500" />
+              <div className="flex-shrink-0 p-3 bg-orange-100 rounded-xl">
+                <Activity className="h-6 w-6 text-orange-600" />
               </div>
               <div className="ml-5 w-0 flex-1">
                 <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">
+                  <dt className="text-sm font-medium text-slate-500 uppercase tracking-wider">
                     Sessions
                   </dt>
-                  <dd className="text-lg font-medium text-gray-900">
+                  <dd className="text-2xl font-bold text-slate-900">
                     {progressData.length}
                   </dd>
                 </dl>
@@ -192,121 +192,135 @@ const ProgressPage: React.FC = () => {
         </div>
       </div>
 
-      {/* Progress Chart */}
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-4 py-5 sm:p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h3 className="text-lg font-medium text-gray-900">
-              Performance Trend - {getTimeRangeLabel(timeRange)}
+      {/* Progress Chart - Glassmorphism Feel */}
+      <div className="bg-white shadow-sm border border-slate-200 rounded-2xl overflow-hidden">
+        <div className="px-6 py-6 border-b border-slate-100 bg-slate-50/50">
+          <div className="flex items-center justify-between">
+            <h3 className="text-lg font-bold text-slate-800">
+              Performance Trend
             </h3>
-            <div className="flex items-center space-x-4 text-sm text-gray-500">
-              <div className="flex items-center">
-                <div className="w-3 h-3 bg-primary-500 rounded-full mr-2"></div>
-                Score
+            <div className="flex items-center space-x-6">
+              <div className="flex items-center text-xs font-semibold text-slate-600">
+                <div className="w-3 h-3 bg-indigo-500 rounded-sm mr-2"></div>
+                Score %
               </div>
-              <div className="flex items-center">
-                <div className="w-3 h-3 bg-green-500 rounded-full mr-2"></div>
+              <div className="flex items-center text-xs font-semibold text-slate-600">
+                <div className="w-3 h-3 bg-emerald-500 rounded-sm mr-2"></div>
                 Reps
               </div>
             </div>
           </div>
-          
+        </div>
+        
+        <div className="p-8">
           {progressData.length > 0 ? (
-            <div className="h-64 flex items-end justify-between space-x-2">
+            <div className="h-72 flex items-end justify-between space-x-4">
               {progressData.map((data, index) => {
-                const maxScore = Math.max(...progressData.map(d => d.score));
-                const maxReps = Math.max(...progressData.map(d => d.reps));
+                const maxScore = 100; // Normalizing to 100%
+                const maxReps = Math.max(...progressData.map(d => d.reps), 10);
                 const scoreHeight = (data.score / maxScore) * 200;
                 const repsHeight = (data.reps / maxReps) * 200;
                 
                 return (
-                  <div key={index} className="flex-1 flex flex-col items-center">
-                    <div className="flex flex-col items-center space-y-1 mb-2">
+                  <div key={index} className="flex-1 flex flex-col items-center group relative">
+                    <div className="flex items-end space-x-1.5 mb-3">
                       <div 
-                        className="w-6 bg-primary-500 rounded-t"
+                        className="w-4 bg-indigo-500 rounded-t-sm transition-all duration-500 group-hover:bg-indigo-600 shadow-sm"
                         style={{ height: `${scoreHeight}px` }}
-                        title={`Score: ${data.score}%`}
                       ></div>
                       <div 
-                        className="w-6 bg-green-500 rounded-t"
+                        className="w-4 bg-emerald-500 rounded-t-sm transition-all duration-500 group-hover:bg-emerald-600 shadow-sm"
                         style={{ height: `${repsHeight}px` }}
-                        title={`Reps: ${data.reps}`}
                       ></div>
                     </div>
-                    <div className="text-xs text-gray-500 transform -rotate-45 origin-left">
+                    <div className="text-[10px] font-bold text-slate-400 transform -rotate-45 mt-2 whitespace-nowrap">
                       {new Date(data.date).toLocaleDateString('en-US', { 
                         month: 'short', 
                         day: 'numeric' 
                       })}
+                    </div>
+                    
+                    {/* Tooltip */}
+                    <div className="absolute -top-16 left-1/2 -translate-x-1/2 bg-slate-800 text-white text-[10px] py-1.5 px-3 rounded shadow-xl opacity-0 group-hover:opacity-100 transition-opacity z-10 pointer-events-none border border-slate-700">
+                      <p className="font-bold border-b border-slate-600 mb-1 pb-1">{new Date(data.date).toLocaleDateString()}</p>
+                      <p className="flex justify-between"><span>Score:</span> <span className="ml-2 text-indigo-300">{data.score}%</span></p>
+                      <p className="flex justify-between"><span>Reps:</span> <span className="ml-2 text-emerald-300">{data.reps}</span></p>
                     </div>
                   </div>
                 );
               })}
             </div>
           ) : (
-            <div className="text-center py-12">
-              <BarChart3 className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No data available</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                Complete some exercise sessions to see your progress here.
+            <div className="text-center py-16">
+              <div className="inline-flex items-center justify-center w-16 h-16 bg-slate-100 rounded-full mb-4">
+                <BarChart3 className="h-8 w-8 text-slate-400" />
+              </div>
+              <h3 className="text-lg font-semibold text-slate-800">No session data yet</h3>
+              <p className="mt-2 text-slate-500 max-w-xs mx-auto">
+                Once you complete your first exercise, your progress analytics will appear here.
               </p>
             </div>
           )}
         </div>
       </div>
 
-      {/* Detailed Progress Table */}
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-4 py-5 sm:p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">Recent Sessions</h3>
-          
+      {/* Detailed Progress Table - Modern List Style */}
+      <div className="bg-white shadow-sm border border-slate-200 rounded-2xl overflow-hidden">
+        <div className="px-6 py-5 border-b border-slate-100 bg-slate-50/50">
+          <h3 className="text-lg font-bold text-slate-800">Recent Activity History</h3>
+        </div>
+        
+        <div className="p-0">
           {progressData.length > 0 ? (
-            <div className="overflow-hidden">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-slate-200">
+                <thead className="bg-slate-50/50">
                   <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Date
+                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                      Session Date
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Score
+                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                      Performance
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Reps
+                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                      Rep Count
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                       Duration
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      Errors
+                    <th className="px-6 py-4 text-left text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                      Form Status
                     </th>
                   </tr>
                 </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
+                <tbody className="bg-white divide-y divide-slate-100">
                   {progressData.slice(0, 10).map((data, index) => (
-                    <tr key={index}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {new Date(data.date).toLocaleDateString()}
+                    <tr key={index} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-semibold text-slate-700">
+                        {new Date(data.date).toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="flex items-center">
-                          <div className="flex-shrink-0">
-                            <div className={`w-2 h-2 rounded-full mr-2 ${
-                              data.score >= 80 ? 'bg-green-500' :
-                              data.score >= 60 ? 'bg-yellow-500' : 'bg-red-500'
-                            }`}></div>
+                          <div className={`flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
+                            data.score >= 80 ? 'bg-emerald-100 text-emerald-700' :
+                            data.score >= 60 ? 'bg-amber-100 text-amber-700' : 'bg-rose-100 text-rose-700'
+                          }`}>
+                            {data.score}%
                           </div>
-                          <span className="text-sm text-gray-900">{data.score}%</span>
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {data.reps}
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-slate-600">
+                        {data.reps} <span className="text-[10px] font-normal text-slate-400 ml-0.5">reps</span>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-slate-500">
                         {formatDuration(data.duration)}
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                        {data.errors}
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <span className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-tighter ${
+                          data.score >= 70 ? 'text-emerald-500' : 'text-rose-500'
+                        }`}>
+                          {data.score >= 70 ? 'Excellent' : 'Needs Review'}
+                        </span>
                       </td>
                     </tr>
                   ))}
@@ -314,11 +328,11 @@ const ProgressPage: React.FC = () => {
               </table>
             </div>
           ) : (
-            <div className="text-center py-6">
-              <CheckCircle className="mx-auto h-12 w-12 text-gray-400" />
-              <h3 className="mt-2 text-sm font-medium text-gray-900">No sessions found</h3>
-              <p className="mt-1 text-sm text-gray-500">
-                Start exercising to build your progress history.
+            <div className="text-center py-12">
+              <CheckCircle className="mx-auto h-12 w-12 text-slate-200" />
+              <h3 className="mt-2 text-sm font-semibold text-slate-800">History is empty</h3>
+              <p className="mt-1 text-sm text-slate-500">
+                Complete a session to start tracking your journey.
               </p>
             </div>
           )}
