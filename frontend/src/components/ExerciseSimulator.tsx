@@ -66,19 +66,77 @@ const ExerciseSimulator: React.FC<ExerciseSimulatorProps> = ({
 
     // Knee Extension simulation
     if (n.includes('knee extension')) {
-        return Array.from({ length: 60 }, (_, i) => {
-          const t = Math.sin((i / 60) * Math.PI);
-          return {
-            points: {
-              head: { x: 0.5, y: 0.1 },
-              shoulder: { x: 0.5, y: 0.2 },
-              hip: { x: 0.5, y: 0.5 },
-              knee: { x: 0.5, y: 0.7 },
-              ankle: { x: 0.5 + t * 0.2, y: 0.9 - t * 0.1 }
-            }
-          };
-        });
-      }
+      return Array.from({ length: 60 }, (_, i) => {
+        const t = Math.sin((i / 60) * Math.PI);
+        return {
+          points: {
+            head: { x: 0.5, y: 0.1 },
+            shoulder: { x: 0.5, y: 0.2 },
+            hip: { x: 0.5, y: 0.5 },
+            knee: { x: 0.5, y: 0.7 },
+            ankle: { x: 0.5 + t * 0.2, y: 0.9 - t * 0.1 }
+          }
+        };
+      });
+    }
+
+    // Shoulder Abduction simulation
+    if (n.includes('shoulder abduction') || n.includes('abduction')) {
+      return Array.from({ length: 60 }, (_, i) => {
+        const t = Math.sin((i / 60) * Math.PI);
+        const armAngle = t * 1.4; // Range of motion
+        return {
+          points: {
+            head: { x: 0.5, y: 0.15 },
+            shoulder: { x: 0.5, y: 0.25 },
+            hip: { x: 0.5, y: 0.55 },
+            elbow_l: { x: 0.5 - Math.cos(armAngle) * 0.15, y: 0.25 - Math.sin(armAngle) * 0.15 },
+            elbow_r: { x: 0.5 + Math.cos(armAngle) * 0.15, y: 0.25 - Math.sin(armAngle) * 0.15 },
+            wrist_l: { x: 0.5 - Math.cos(armAngle) * 0.3, y: 0.25 - Math.sin(armAngle) * 0.3 },
+            wrist_r: { x: 0.5 + Math.cos(armAngle) * 0.3, y: 0.25 - Math.sin(armAngle) * 0.3 },
+            knee_l: { x: 0.45, y: 0.75 },
+            knee_r: { x: 0.55, y: 0.75 },
+            ankle_l: { x: 0.45, y: 0.95 },
+            ankle_r: { x: 0.55, y: 0.95 }
+          }
+        };
+      });
+    }
+
+    // Plank simulation
+    if (n.includes('plank')) {
+      return Array.from({ length: 60 }, (_, i) => {
+        const jitter = Math.sin(i * 0.5) * 0.002;
+        return {
+          points: {
+            head: { x: 0.2, y: 0.65 + jitter },
+            shoulder: { x: 0.3, y: 0.7 + jitter },
+            elbow: { x: 0.3, y: 0.85 },
+            hip: { x: 0.6, y: 0.7 + jitter },
+            ankle: { x: 0.9, y: 0.7 }
+          }
+        };
+      });
+    }
+
+    // Lunge simulation
+    if (n.includes('lunge')) {
+      return Array.from({ length: 60 }, (_, i) => {
+        const t = Math.sin((i / 60) * Math.PI);
+        const lungeDepth = t * 0.2;
+        return {
+          points: {
+            head: { x: 0.4, y: 0.2 + lungeDepth },
+            shoulder: { x: 0.4, y: 0.3 + lungeDepth },
+            hip: { x: 0.4, y: 0.6 + lungeDepth },
+            knee_l: { x: 0.6, y: 0.7 + lungeDepth }, // Front leg
+            ankle_l: { x: 0.6, y: 0.9 },
+            knee_r: { x: 0.2, y: 0.8 + lungeDepth }, // Back leg
+            ankle_r: { x: 0.1, y: 0.9 }
+          }
+        };
+      });
+    }
 
     // Default standing/idle
     return [{
@@ -144,7 +202,14 @@ const ExerciseSimulator: React.FC<ExerciseSimulatorProps> = ({
     if (pts.hip && pts.ankle && !pts.knee) drawLine(pts.hip, pts.ankle);
 
     // Arms
-    if (pts.shoulder && pts.elbow) drawLine(pts.shoulder, pts.elbow);
+    if (pts.shoulder && pts.elbow_l) drawLine(pts.shoulder, pts.elbow_l);
+    if (pts.shoulder && pts.elbow_r) drawLine(pts.shoulder, pts.elbow_r);
+    if (pts.elbow_l && pts.wrist_l) drawLine(pts.elbow_l, pts.wrist_l);
+    if (pts.elbow_r && pts.wrist_r) drawLine(pts.elbow_r, pts.wrist_r);
+    
+    // Single arm support (backward compatibility)
+    if (pts.shoulder && pts.elbow && !pts.elbow_l) drawLine(pts.shoulder, pts.elbow);
+    if (pts.elbow && pts.wrist && !pts.wrist_l) drawLine(pts.elbow, pts.wrist);
   };
 
   useEffect(() => {

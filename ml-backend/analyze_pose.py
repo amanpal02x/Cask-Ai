@@ -113,6 +113,42 @@ def analyze_pose(landmarks, exercise, session_state=None):
                 if consecutive_good_frames >= 60:
                     rep_count += 1
                     consecutive_good_frames = 0
+
+        elif exercise == "shoulder_abduction" or "abduction" in exercise:
+            l_shoulder = [landmarks[11]['x'], landmarks[11]['y']]
+            l_elbow = [landmarks[13]['x'], landmarks[13]['y']]
+            l_hip = [landmarks[23]['x'], landmarks[23]['y']]
+            
+            # Angle between shoulder-hip and shoulder-elbow
+            arm_angle = calculate_angle(l_hip, l_shoulder, l_elbow)
+            angles["arm_elevation"] = arm_angle
+            
+            if arm_angle > 80:
+                if stage == "down": rep_count += 1
+                stage = "up"
+            elif arm_angle < 30:
+                stage = "down"
+                
+            if arm_angle > 100:
+                feedback.append("Don't lift too high! Stop at shoulder level")
+                current_accuracy -= 10
+
+        elif exercise == "lunge":
+            l_hip = [landmarks[23]['x'], landmarks[23]['y']]
+            l_knee = [landmarks[25]['x'], landmarks[25]['y']]
+            l_ankle = [landmarks[27]['x'], landmarks[27]['y']]
+            
+            knee_angle = calculate_angle(l_hip, l_knee, l_ankle)
+            angles["knee_flexion"] = knee_angle
+            
+            if knee_angle < 110:
+                stage = "down"
+            elif knee_angle > 160:
+                if stage == "down": rep_count += 1
+                stage = "up"
+                
+            if stage == "down" and knee_angle > 120:
+                feedback.append("Go deeper into the lunge")
         
         else:
             feedback.append(f"Analyzing {exercise}...")

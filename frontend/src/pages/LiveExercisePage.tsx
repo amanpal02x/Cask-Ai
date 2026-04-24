@@ -43,6 +43,8 @@ const LiveExercisePage: React.FC = () => {
   const [currentPosture, setCurrentPosture] = useState<string>('');
   const [poseDetected, setPoseDetected] = useState(false);
   const [showExerciseSelector, setShowExerciseSelector] = useState(false);
+  const [sessionLimit, setSessionLimit] = useState<number | null>(null);
+  const [inputMinutes, setInputMinutes] = useState<string>('');
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -336,7 +338,14 @@ const LiveExercisePage: React.FC = () => {
   useEffect(() => {
     if (isRecording && !isPaused) {
       intervalRef.current = setInterval(() => {
-        setSessionTime(prev => prev + 1);
+        setSessionTime(prev => {
+          const newTime = prev + 1;
+          if (sessionLimit && newTime >= sessionLimit) {
+            endSession();
+            return prev;
+          }
+          return newTime;
+        });
       }, 1000);
     } else {
       if (intervalRef.current) {
@@ -490,6 +499,18 @@ const LiveExercisePage: React.FC = () => {
     return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
+  const handleDurationChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    if (val === '' || (/^\d+$/.test(val) && parseInt(val) > 0)) {
+      setInputMinutes(val);
+      if (val !== '') {
+        setSessionLimit(parseInt(val) * 60);
+      } else {
+        setSessionLimit(null);
+      }
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -509,9 +530,17 @@ const LiveExercisePage: React.FC = () => {
               </h1>
               {exercise && <p className="mt-1 text-sm text-gray-500">{exercise.description}</p>}
             </div>
-            <div className="text-right">
-              <div className="text-2xl font-bold text-primary-600">{formatTime(sessionTime)}</div>
-              <div className="text-sm text-gray-500">Session Time</div>
+            <div className="text-right flex items-center space-x-6">
+              {isRecording && sessionLimit && (
+                <div>
+                  <div className="text-2xl font-bold text-amber-600">{formatTime(Math.max(0, sessionLimit - sessionTime))}</div>
+                  <div className="text-sm text-gray-500">Remaining</div>
+                </div>
+              )}
+              <div>
+                <div className="text-2xl font-bold text-primary-600">{formatTime(sessionTime)}</div>
+                <div className="text-sm text-gray-500">Session Time</div>
+              </div>
             </div>
           </div>
         </div>
@@ -582,9 +611,26 @@ const LiveExercisePage: React.FC = () => {
                 ) : <div />}
                 
                 {!isRecording ? (
-                  <button onClick={startSession} disabled={!cameraActive || !exercise} className={`px-8 py-2 rounded-md text-white font-medium ${cameraActive && exercise ? 'bg-primary-600 hover:bg-primary-700' : 'bg-gray-400 cursor-not-allowed'}`}>
-                    <Play className="inline h-5 w-5 mr-2" /> Start Session
-                  </button>
+                  <div className="flex items-center space-x-4">
+                    <div className="flex items-center space-x-2">
+                      <label htmlFor="duration" className="text-sm font-medium text-gray-700">Duration (min):</label>
+                      <input
+                        id="duration"
+                        type="text"
+                        value={inputMinutes}
+                        onChange={handleDurationChange}
+                        placeholder="e.g. 10"
+                        className="w-20 px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                      />
+                    </div>
+                    <button 
+                      onClick={startSession} 
+                      disabled={!cameraActive || !exercise || !sessionLimit} 
+                      className={`px-8 py-2 rounded-md text-white font-medium ${cameraActive && exercise && sessionLimit ? 'bg-primary-600 hover:bg-primary-700 shadow-md' : 'bg-gray-400 cursor-not-allowed'}`}
+                    >
+                      <Play className="inline h-5 w-5 mr-2" /> Start Session
+                    </button>
+                  </div>
                 ) : (
                   <div className="flex space-x-3">
                     <button onClick={pauseSession} className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 bg-white hover:bg-gray-50 text-sm">

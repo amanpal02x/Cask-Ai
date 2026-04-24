@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { 
   Play, 
   Upload, 
@@ -8,12 +8,14 @@ import {
   TrendingUp,
   Clock,
   Target,
-  CheckCircle
+  CheckCircle,
+  X
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
-import { DashboardStats, ExerciseSession } from '../types';
+import { DashboardStats, ExerciseSession, Exercise } from '../types';
 import apiService from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
+import ExerciseSelector from '../components/ExerciseSelector';
 import NotificationsSection from '../components/NotificationsSection';
 import ChatWidget from '../components/ChatWidget';
 
@@ -23,7 +25,15 @@ const PatientDashboard: React.FC = () => {
   // const [exercises, setExercises] = useState<Exercise[]>([]);
   const [recentSessions, setRecentSessions] = useState<ExerciseSession[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [selectedExercise, setSelectedExercise] = useState<Exercise | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadDuration, setUploadDuration] = useState<string>('');
+  const [uploadError, setUploadError] = useState<string>('');
+  
   const chatWidgetRef = useRef<any>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchDashboardData = async () => {
@@ -50,6 +60,50 @@ const PatientDashboard: React.FC = () => {
   const handleOpenChat = (relationshipId: string) => {
     if (chatWidgetRef.current) {
       chatWidgetRef.current.openChat(relationshipId);
+    }
+  };
+
+  const handleUploadClick = () => {
+    setIsUploadModalOpen(true);
+  };
+
+  const handleExerciseSelectForUpload = (exercise: Exercise) => {
+    setSelectedExercise(exercise);
+  };
+
+  const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !selectedExercise || !uploadDuration) return;
+
+    try {
+      setIsUploading(true);
+      setUploadError('');
+      
+      // 1. Start a session for this exercise
+      const sessionResponse = await apiService.startSession(selectedExercise.id);
+      if (!sessionResponse.success || !sessionResponse.data) {
+        throw new Error('Failed to start session for upload');
+      }
+
+      // 2. Upload the video
+      const uploadResponse = await apiService.uploadSessionVideo(sessionResponse.data.id, file);
+      if (uploadResponse.success) {
+        setIsUploadModalOpen(false);
+        navigate('/patient/progress');
+      } else {
+        throw new Error(uploadResponse.message || 'Upload failed');
+      }
+    } catch (err) {
+      console.error('Upload error:', err);
+      setUploadError(err instanceof Error ? err.message : 'An error occurred during upload');
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
+  const triggerFileSelect = () => {
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
     }
   };
 
@@ -103,7 +157,10 @@ const PatientDashboard: React.FC = () => {
           </span>
         </Link>
 
-        <div className="relative group bg-white p-6 focus-within:ring-2 focus-within:ring-inset focus-within:ring-primary-500 rounded-lg shadow hover:shadow-md transition-shadow cursor-pointer">
+        <div 
+          onClick={handleUploadClick}
+          className="relative group bg-white p-6 focus-within:ring-2 focus-within:ring-inset focus-within:ring-primary-500 rounded-lg shadow hover:shadow-md transition-shadow cursor-pointer"
+        >
           <div>
             <span className="rounded-lg inline-flex p-3 bg-secondary-50 text-secondary-700 ring-4 ring-white">
               <Upload className="h-6 w-6" />
@@ -308,6 +365,102 @@ const PatientDashboard: React.FC = () => {
 
       {/* Chat Widget */}
       <ChatWidget ref={chatWidgetRef} />
+
+      {/* Upload Modal */}
+      {isUploadModalOpen && (
+        <div className="fixed inset-0 z-50 overflow-y-auto">
+          <div className="flex items-center justify-center min-h-screen px-4">
+            <div className="fixed inset-0 bg-gray-500 bg-opacity-75 transition-opacity" onClick={() => !isUploading && setIsUploadModalOpen(false)}></div>
+            <div className="bg-white rounded-lg overflow-hidden shadow-xl transform transition-all sm:max-w-4xl sm:w-full z-50">
+              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
+                <div className="flex justify-between items-center mb-4 border-b pb-4">
+                  <h3 className="text-xl font-bold text-gray-900">Upload Past Session</h3>
+                  <button onClick={() => setIsUploadModalOpen(false)} className="text-gray-400 hover:text-gray-500">
+                    <X className="h-6 w-6" />
+                  </button>
+                </div>
+
+                {uploadError && (
+                  <div className="mb-4 bg-red-50 border border-red-200 text-red-600 px-4 py-3 rounded-md text-sm">
+                    {uploadError}
+                  </div>
+                )}
+
+                {!selectedExercise ? (
+                  <ExerciseSelector 
+                    onExerciseSelect={handleExerciseSelectForUpload} 
+                  />
+                ) : (
+                  <div className="space-y-6">
+                    <div className="flex items-center p-4 bg-primary-50 rounded-lg border border-primary-100">
+                      <Target className="h-8 w-8 text-primary-600 mr-4" />
+                      <div>
+                        <div className="text-lg font-bold text-gray-900">{selectedExercise.name}</div>
+                        <div className="text-sm text-gray-500">Selected for analysis</div>
+                      </div>
+                      <button 
+                        onClick={() => setSelectedExercise(null)} 
+                        className="ml-auto text-sm text-primary-600 font-medium hover:text-primary-700"
+                      >
+                        Change
+                      </button>
+                    </div>
+
+                    <div className="bg-gray-50 p-6 rounded-lg border border-gray-200">
+                      <h4 className="text-sm font-bold text-gray-900 uppercase tracking-wider mb-4">Session Details</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-2">Session Duration (min)</label>
+                          <input
+                            type="text"
+                            value={uploadDuration}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (val === '' || /^\d+$/.test(val)) setUploadDuration(val);
+                            }}
+                            placeholder="e.g. 15"
+                            className="block w-full px-4 py-3 border border-gray-300 rounded-md shadow-sm focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
+                          />
+                          <p className="mt-2 text-xs text-gray-500">Enter the approximate duration of the recorded video.</p>
+                        </div>
+                        
+                        <div className="flex flex-col justify-end">
+                          <input
+                            type="file"
+                            ref={fileInputRef}
+                            onChange={handleFileSelect}
+                            accept="video/*"
+                            className="hidden"
+                          />
+                          <button
+                            onClick={triggerFileSelect}
+                            disabled={!uploadDuration || isUploading}
+                            className={`w-full flex justify-center items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white shadow-sm ${
+                              uploadDuration && !isUploading ? 'bg-primary-600 hover:bg-primary-700' : 'bg-gray-400 cursor-not-allowed'
+                            }`}
+                          >
+                            {isUploading ? (
+                              <>
+                                <LoadingSpinner size="sm" className="mr-2" />
+                                Uploading...
+                              </>
+                            ) : (
+                              <>
+                                <Upload className="h-5 w-5 mr-2" />
+                                Select Video & Upload
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
