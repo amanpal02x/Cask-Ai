@@ -53,16 +53,6 @@ const LiveExercisePage: React.FC = () => {
   const sessionStartTime = useRef<Date | null>(null);
   const poseRef = useRef<Pose | null>(null);
   const cameraRef = useRef<MediaPipeCamera | null>(null);
-  const isRecordingRef = useRef(isRecording);
-  const isPausedRef = useRef(isPaused);
-  const sessionRef = useRef(session);
-  const analyzePoseRef = useRef(analyzePose);
-
-  // Keep refs in sync with state
-  useEffect(() => { isRecordingRef.current = isRecording; }, [isRecording]);
-  useEffect(() => { isPausedRef.current = isPaused; }, [isPaused]);
-  useEffect(() => { sessionRef.current = session; }, [session]);
-  useEffect(() => { analyzePoseRef.current = analyzePose; }, [analyzePose]);
 
   useEffect(() => {
     const fetchExercise = async () => {
@@ -162,6 +152,17 @@ const LiveExercisePage: React.FC = () => {
       console.error('Error analyzing pose:', error);
     }
   }, [session, determineCurrentPosture]);
+  
+  const isRecordingRef = useRef(isRecording);
+  const isPausedRef = useRef(isPaused);
+  const sessionRef = useRef(session);
+  const analyzePoseRef = useRef(analyzePose);
+
+  // Keep refs in sync with state
+  useEffect(() => { isRecordingRef.current = isRecording; }, [isRecording]);
+  useEffect(() => { isPausedRef.current = isPaused; }, [isPaused]);
+  useEffect(() => { sessionRef.current = session; }, [session]);
+  useEffect(() => { analyzePoseRef.current = analyzePose; }, [analyzePose]);
 
   const initializeMediaPipe = useCallback(() => {
     if (!videoRef.current || !canvasRef.current) {
