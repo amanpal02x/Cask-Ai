@@ -21,15 +21,36 @@ dotenv.config();
 
 const app = express();
 
+// CORS must be at the top
+app.use(
+  cors({
+    origin: (origin, callback) => {
+      // Allow requests with no origin (like mobile apps or curl)
+      if (!origin) return callback(null, true);
+      
+      const allowedOrigins = [
+        process.env.CLIENT_ORIGIN,
+        'http://localhost:3000',
+        'https://cask-ai.vercel.app'
+      ].filter(Boolean) as string[];
+      
+      if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.vercel.app')) {
+        callback(null, true);
+      } else {
+        callback(null, true); // Fallback to true during debugging, or use more strict logic
+      }
+    },
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+  })
+);
+
 app.use(express.json());
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 app.use(morgan('dev'));
-app.use(
-  cors({
-    origin: process.env.CLIENT_ORIGIN || 'http://localhost:3000',
-    credentials: true,
-  })
-);
+
+app.options('*', cors()); // Enable pre-flight for all routes
 
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/caskai';
 
@@ -60,6 +81,24 @@ app.use('/api/activities', activityRoutes);
 app.use('/api/chat', chatRoutes);
 app.use('/api/notifications', notificationRoutes);
 app.use('/api/doctor', patientDoctorRoutes);
+
+// Global Error Handler
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error('Unhandled Error:', err);
+  
+  // Ensure CORS headers are present even in error responses
+  const origin = req.headers.origin;
+  if (origin) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+  }
+
+  res.status(err.status || 500).json({
+    success: false,
+    message: err.message || 'Internal Server Error',
+    error: process.env.NODE_ENV === 'development' ? err : undefined
+  });
+});
 
 const PORT = Number(process.env.PORT) || 8000;
 const server = createServer(app);

@@ -108,11 +108,7 @@ class ApiService {
     const formData = new FormData();
     formData.append('video', videoFile);
     
-    const response = await this.api.post(`/sessions/${sessionId}/video`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+    const response = await this.api.post(`/sessions/${sessionId}/video`, formData);
     return response.data;
   }
 
@@ -264,11 +260,7 @@ async analyzePose(sessionId: string, landmarks: number[][]): Promise<ApiResponse
     const formData = new FormData();
     formData.append('file', file);
     
-    const response = await this.api.post(endpoint, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    });
+    const response = await this.api.post(endpoint, formData);
     return response.data;
   }
 }
