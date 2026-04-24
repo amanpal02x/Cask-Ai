@@ -4,6 +4,7 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import mongoose from 'mongoose';
 import { createServer } from 'http';
+import path from 'path';
 import authRoutes from './routes/auth';
 import userRoutes from './routes/user';
 import dashboardRoutes from './routes/dashboard';
@@ -21,6 +22,7 @@ dotenv.config();
 const app = express();
 
 app.use(express.json());
+app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 app.use(morgan('dev'));
 app.use(
   cors({

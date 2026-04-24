@@ -79,15 +79,21 @@ const PatientDashboard: React.FC = () => {
       setIsUploading(true);
       setUploadError('');
       
-      // 1. Start a session for this exercise
-      const sessionResponse = await apiService.startSession(selectedExercise.id);
+      // 1. Start a session for this exercise with duration
+      const durationNum = parseInt(uploadDuration);
+      const sessionResponse = await apiService.startSession(selectedExercise.id, durationNum);
       if (!sessionResponse.success || !sessionResponse.data) {
         throw new Error('Failed to start session for upload');
       }
+      
+      const sessionId = sessionResponse.data.id;
 
       // 2. Upload the video
-      const uploadResponse = await apiService.uploadSessionVideo(sessionResponse.data.id, file);
+      const uploadResponse = await apiService.uploadSessionVideo(sessionId, file);
       if (uploadResponse.success) {
+        // 3. Mark session as completed
+        await apiService.endSession(sessionId);
+        
         setIsUploadModalOpen(false);
         navigate('/patient/progress');
       } else {

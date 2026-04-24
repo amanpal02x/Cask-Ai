@@ -53,6 +53,16 @@ const LiveExercisePage: React.FC = () => {
   const sessionStartTime = useRef<Date | null>(null);
   const poseRef = useRef<Pose | null>(null);
   const cameraRef = useRef<MediaPipeCamera | null>(null);
+  const isRecordingRef = useRef(isRecording);
+  const isPausedRef = useRef(isPaused);
+  const sessionRef = useRef(session);
+  const analyzePoseRef = useRef(analyzePose);
+
+  // Keep refs in sync with state
+  useEffect(() => { isRecordingRef.current = isRecording; }, [isRecording]);
+  useEffect(() => { isPausedRef.current = isPaused; }, [isPaused]);
+  useEffect(() => { sessionRef.current = session; }, [session]);
+  useEffect(() => { analyzePoseRef.current = analyzePose; }, [analyzePose]);
 
   useEffect(() => {
     const fetchExercise = async () => {
@@ -225,8 +235,8 @@ const LiveExercisePage: React.FC = () => {
           });
 
           // Analyze pose if session is active
-          if (isRecording && session && !isPaused) {
-            analyzePose(results.poseLandmarks);
+          if (isRecordingRef.current && sessionRef.current && !isPausedRef.current) {
+            analyzePoseRef.current(results.poseLandmarks);
           }
         } else {
           setPoseDetected(false);
@@ -275,7 +285,7 @@ const LiveExercisePage: React.FC = () => {
     } catch (error) {
       console.error('Error initializing MediaPipe:', error);
     }
-  }, [isRecording, isPaused, session, analyzePose]);
+  }, []); // Dependencies removed to keep it stable
 
   // Initialize MediaPipe Pose
   useEffect(() => {
@@ -419,7 +429,10 @@ const LiveExercisePage: React.FC = () => {
         return;
       }
 
-      const response = await apiService.startSession(exercise.id);
+      const response = await apiService.startSession(
+        exercise.id, 
+        sessionLimit ? sessionLimit / 60 : undefined
+      );
       if (response.success && response.data) {
         setSession(response.data);
         setIsRecording(true);

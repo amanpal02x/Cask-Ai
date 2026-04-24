@@ -22,6 +22,7 @@ export interface IExerciseSession extends Document {
   endTime?: Date;
   duration?: number; // in seconds
   status: 'active' | 'paused' | 'completed' | 'cancelled';
+  scheduledDuration?: number; // in minutes
   
   // Exercise Performance
   totalReps: number;
@@ -107,6 +108,7 @@ const ExerciseSessionSchema = new Schema<IExerciseSession>(
       enum: ['active', 'paused', 'completed', 'cancelled'], 
       default: 'active' 
     },
+    scheduledDuration: { type: Number, min: 0 },
     
     // Exercise Performance
     totalReps: { type: Number, default: 0, min: 0 },

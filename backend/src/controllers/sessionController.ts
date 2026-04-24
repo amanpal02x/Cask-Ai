@@ -4,7 +4,7 @@ import SessionService from '../services/sessionService';
 
 export const startSession = async (req: Request, res: Response) => {
   try {
-    const { exerciseId, doctorId } = req.body;
+    const { exerciseId, doctorId, scheduledDuration } = req.body;
     const userId = (req as any).user?.id;
     
     if (!userId) {
@@ -30,6 +30,7 @@ export const startSession = async (req: Request, res: Response) => {
       userId, 
       validExerciseId, 
       doctorId,
+      scheduledDuration,
       req.headers['user-agent']
     );
     
@@ -170,16 +171,19 @@ export const getSession = async (req: Request, res: Response) => {
 export const uploadSessionVideo = async (req: Request, res: Response) => {
   try {
     const { sessionId } = req.params;
-    const { videoUrl, thumbnailUrl } = req.body;
     
-    if (!videoUrl) {
+    // If using multer, the file is in req.file
+    if (!req.file) {
       const response: ApiResponse<null> = {
         success: false,
         data: null,
-        message: 'Video URL is required'
+        message: 'No video file uploaded'
       };
       return res.status(400).json(response);
     }
+    
+    const videoUrl = `/uploads/${req.file.filename}`;
+    const thumbnailUrl = ''; // Optional thumbnail handling
     
     const uploaded = await SessionService.uploadSessionVideo(sessionId, videoUrl, thumbnailUrl);
     

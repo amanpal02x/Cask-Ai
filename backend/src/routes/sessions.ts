@@ -9,6 +9,8 @@ import {
 } from '../controllers/sessionController';
 import { authMiddleware } from '../middleware/auth';
 
+import { upload } from '../middleware/upload';
+
 const router = Router();
 
 // All session routes require authentication
@@ -18,7 +20,7 @@ router.post('/start', startSession);
 router.post('/:sessionId/end', endSession);
 router.get('/history', getSessionHistory);
 router.get('/:sessionId', getSession);
-router.post('/:sessionId/video', uploadSessionVideo);
+router.post('/:sessionId/video', upload.single('video'), uploadSessionVideo);
 router.post('/:sessionId/analyze', analyzeFrame);
 
 export default router;

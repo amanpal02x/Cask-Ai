@@ -13,6 +13,7 @@ export class SessionService {
     patientId: string, 
     exerciseId: string, 
     doctorId?: string,
+    scheduledDuration?: number,
     deviceInfo?: any
   ): Promise<IExerciseSessionType> {
     // Validate ObjectIds
@@ -32,6 +33,7 @@ export class SessionService {
       exerciseId: new Types.ObjectId(exerciseId),
       startTime: new Date(),
       status: 'active',
+      scheduledDuration,
       deviceInfo
     }) as HydratedDocument<IExerciseSession>;
 

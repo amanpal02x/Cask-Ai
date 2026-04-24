@@ -21,7 +21,7 @@ class ApiService {
   constructor() {
     this.api = axios.create({
       baseURL: API_BASE_URL,
-      timeout: 10000,
+      timeout: 300000, // 5 minutes for video uploads
       headers: {
         'Content-Type': 'application/json',
       },
@@ -94,8 +94,8 @@ class ApiService {
   }
 
   // Session Management
-  async startSession(exerciseId: string): Promise<ApiResponse<ExerciseSession>> {
-    const response = await this.api.post('/sessions/start', { exerciseId });
+  async startSession(exerciseId: string, scheduledDuration?: number): Promise<ApiResponse<ExerciseSession>> {
+    const response = await this.api.post('/sessions/start', { exerciseId, scheduledDuration });
     return response.data;
   }
 
