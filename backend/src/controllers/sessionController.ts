@@ -202,11 +202,58 @@ export const uploadSessionVideo = async (req: Request, res: Response) => {
       };
       return res.status(404).json(response);
     }
+
+    // TRIGGER ASYNC ML ANALYSIS
+    // We don't await this long-running process in the main request flow
+    // but we start it here. In a robust system, this would be a worker task.
+    const { processSessionVideo } = await import('../services/mlService');
+    const { ExerciseService } = await import('../services/exerciseService');
     
-    const response: ApiResponse<{ videoUrl: string }> = {
+    const session = await SessionService.getSession(sessionId);
+    if (!session) {
+      const response: ApiResponse<null> = {
+        success: false,
+        data: null,
+        message: 'Session not found'
+      };
+      return res.status(404).json(response);
+    }
+
+    // Get exercise name for ML engine
+    const exercise = await ExerciseService.getExerciseById(session.exerciseId);
+    const exerciseName = exercise?.name || "squat";
+    
+    // Start processing in the background (using a self-executing async function)
+    (async () => {
+      try {
+        console.log(`Starting background ML analysis for session ${sessionId}...`);
+        const mlResult = await processSessionVideo(sessionId, videoUrl, exerciseName);
+        
+        if (mlResult.success && mlResult.results) {
+          const { results } = mlResult;
+          // Update session with real analysis results
+          await SessionService.endSession(sessionId, {
+            totalReps: results.totalReps || 0,
+            averageScore: results.averageScore || 0,
+            maxScore: results.averageScore || 0,
+            minScore: results.averageScore || 0,
+            overallFeedback: results.feedback || [],
+            improvementAreas: [],
+            strengths: [],
+            repAnalysis: [],
+            videoUrl: videoUrl
+          });
+          console.log(`ML analysis completed for session ${sessionId}`);
+        }
+      } catch (err) {
+        console.error(`Background ML analysis failed for session ${sessionId}:`, err);
+      }
+    })();
+    
+    const response: ApiResponse<{ videoUrl: string, processing: boolean }> = {
       success: true,
-      data: { videoUrl },
-      message: 'Video uploaded successfully'
+      data: { videoUrl, processing: true },
+      message: 'Video uploaded successfully. Analysis is running in the background.'
     };
     
     res.json(response);

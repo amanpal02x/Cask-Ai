@@ -84,6 +84,56 @@ async def predict(data: PoseData):
         )
 
 
+from video_processor import download_video, process_video_file
+import os
+import tempfile
+from fastapi import BackgroundTasks
+
+@app.post("/process-video")
+async def process_video(
+    video_url: str, 
+    exercise: ExerciseType, 
+    sessionId: str,
+    callback_url: Optional[str] = None
+):
+    try:
+        logger.info(f"Received video processing request for session: {sessionId}")
+        
+        # In a real production app, we would use BackgroundTasks
+        # but for simplicity and immediate response, we'll process and return
+        # or we could implement a webhook callback.
+        
+        with tempfile.NamedTemporaryFile(suffix=".mp4", delete=False) as tf:
+            temp_path = tf.name
+            
+        try:
+            if not download_video(video_url, temp_path):
+                raise Exception("Failed to download video from URL")
+                
+            results = process_video_file(temp_path, exercise, engine, sessionId)
+            
+            if "error" in results:
+                raise Exception(results["error"])
+                
+            # If a callback URL is provided, we could notify the main backend
+            # For now, we return the results directly to the caller (main backend)
+            return {
+                "success": True,
+                "sessionId": sessionId,
+                "results": results
+            }
+            
+        finally:
+            if os.path.exists(temp_path):
+                os.remove(temp_path)
+
+    except Exception as e:
+        logger.error(f"Error in process_video: {e}")
+        raise HTTPException(
+            status_code=500,
+            detail=str(e)
+        )
+
 @app.get("/supported-exercises")
 async def supported_exercises():
 

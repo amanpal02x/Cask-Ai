@@ -56,6 +56,26 @@ export const analyzePose = async (landmarks: any[], exerciseName: string = "squa
   }
 };
 
+/**
+ * Sends a video URL to the ML backend for full asynchronous processing
+ */
+export const processSessionVideo = async (sessionId: string, videoUrl: string, exerciseName: string) => {
+  try {
+    const exercise = mapExerciseType(exerciseName);
+    
+    const res = await axios.post(`${ML_BACKEND_URL}/process-video`, {
+      video_url: videoUrl,
+      exercise: exercise,
+      sessionId: sessionId
+    });
+    
+    return res.data;
+  } catch (err) {
+    console.error("Error calling ML backend for video processing:", err);
+    return { success: false, error: "ML Backend unavailable" };
+  }
+};
+
 // Mock pose analysis function for development
 // Updated to return fields consistent with the real ML engine
 const mockPoseAnalysis = (landmarks: any, exerciseName: string) => {
