@@ -87,7 +87,7 @@ const ProgressPage: React.FC = () => {
             <div>
               <h1 className="text-2xl font-bold text-gray-900">Progress Tracking</h1>
               <p className="mt-1 text-sm text-gray-500">
-                Monitor your exercise performance and improvement over time
+                Performance metrics for the {getTimeRangeLabel(timeRange).toLowerCase()}
               </p>
             </div>
             <div className="flex space-x-2">
