@@ -1,4 +1,5 @@
-mediapipe
+mediapipe==0.10.11
+protobuf<5.0.0
 torch
 numpy
 pandas
@@ -12,4 +13,4 @@ anyio
 click
 requests
 tensorflow-cpu
-opencv-python
+opencv-python-headless

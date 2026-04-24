@@ -9,13 +9,26 @@ import logging
 logger = logging.getLogger(__name__)
 
 # Initialize MediaPipe Pose
-mp_pose = mp.solutions.pose
-pose = mp_pose.Pose(
-    static_image_mode=False,
-    model_complexity=1,
-    enable_segmentation=False,
-    min_detection_confidence=0.5
-)
+try:
+    import mediapipe as mp
+    mp_pose = mp.solutions.pose
+    pose = mp_pose.Pose(
+        static_image_mode=False,
+        model_complexity=1,
+        enable_segmentation=False,
+        min_detection_confidence=0.5
+    )
+except AttributeError as e:
+    logger.error(f"MediaPipe initialization failed: {e}")
+    # Fallback or dummy object to prevent startup crash
+    class DummyPose:
+        def process(self, *args, **kwargs):
+            class DummyResults:
+                pose_landmarks = None
+            return DummyResults()
+    pose = DummyPose()
+    mp_pose = None
+    logger.warning("Using DummyPose due to MediaPipe error. Video processing will not work.")
 
 def download_video(url: str, save_path: str):
     response = requests.get(url, stream=True)

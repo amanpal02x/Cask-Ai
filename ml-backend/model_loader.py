@@ -9,7 +9,7 @@ except ImportError:
     import keras
     load_model = keras.models.load_model
 
-MODEL_DIR = "models"
+MODEL_DIR = os.path.join(os.path.dirname(__file__), "models")
 
 models = {}
 
