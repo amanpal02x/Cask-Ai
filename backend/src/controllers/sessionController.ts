@@ -171,6 +171,13 @@ export const getSession = async (req: Request, res: Response) => {
 export const uploadSessionVideo = async (req: Request, res: Response) => {
   try {
     const { sessionId } = req.params;
+    console.log('UploadSessionVideo - sessionId:', sessionId);
+    console.log('UploadSessionVideo - file:', req.file ? {
+      fieldname: req.file.fieldname,
+      originalname: req.file.originalname,
+      mimetype: req.file.mimetype,
+      size: req.file.size
+    } : 'NULL');
     
     // If using multer, the file is in req.file
     if (!req.file) {

@@ -10,18 +10,23 @@ if (!fs.existsSync(uploadDir)) {
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
+    console.log('Multer destination:', uploadDir);
     cb(null, uploadDir);
   },
   filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
-    cb(null, file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname));
+    const fname = file.fieldname + '-' + uniqueSuffix + path.extname(file.originalname);
+    console.log('Multer filename:', fname);
+    cb(null, fname);
   },
 });
 
 const fileFilter = (req: any, file: any, cb: any) => {
-  if (file.mimetype.startsWith('video/')) {
+  console.log('Multer fileFilter:', file.fieldname, file.mimetype);
+  if (file.mimetype.startsWith('video/') || file.mimetype === 'application/octet-stream') {
     cb(null, true);
   } else {
+    console.warn('Multer fileFilter REJECTED:', file.mimetype);
     cb(new Error('Only video files are allowed!'), false);
   }
 };
