@@ -318,49 +318,6 @@ const LiveExercisePage: React.FC = () => {
     };
   }, [cameraActive, initializeMediaPipe]);
 
-  // Handle canvas resize
-  useEffect(() => {
-    const handleResize = () => {
-      if (canvasRef.current && cameraActive) {
-        const container = canvasRef.current.parentElement;
-        if (container) {
-          const rect = container.getBoundingClientRect();
-          canvasRef.current.width = rect.width;
-          canvasRef.current.height = rect.height;
-        }
-      }
-    };
-
-    window.addEventListener('resize', handleResize);
-    return () => window.removeEventListener('resize', handleResize);
-  }, [cameraActive]);
-
-  useEffect(() => {
-    if (isRecording && !isPaused) {
-      intervalRef.current = setInterval(() => {
-        setSessionTime(prev => {
-          const newTime = prev + 1;
-          if (sessionLimit && newTime >= sessionLimit) {
-            endSession();
-            return prev;
-          }
-          return newTime;
-        });
-      }, 1000);
-    } else {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    }
-
-    return () => {
-      if (intervalRef.current) {
-        clearInterval(intervalRef.current);
-      }
-    };
-  }, [isRecording, isPaused]);
-
-
   const startCamera = async () => {
     try {
       console.log('Requesting camera access...');
@@ -407,7 +364,7 @@ const LiveExercisePage: React.FC = () => {
     }
   };
 
-  const stopCamera = () => {
+  const stopCamera = useCallback(() => {
     if (streamRef.current) {
       streamRef.current.getTracks().forEach(track => track.stop());
       streamRef.current = null;
@@ -433,13 +390,26 @@ const LiveExercisePage: React.FC = () => {
     setPoseDetected(false);
     setAccuracy(undefined);
     setCurrentPosture('');
-  };
+  }, []);
 
-  const handleExerciseSelect = (selectedExercise: Exercise) => {
-    setExercise(selectedExercise);
-    setShowExerciseSelector(false);
-    // Update URL without reload - path must match Route in App.tsx
-    navigate(`/patient/exercise/${selectedExercise.id}`, { replace: true });
+  const endSession = useCallback(async () => {
+    try {
+      if (session) {
+        await apiService.endSession(session.id);
+      }
+      setIsRecording(false);
+      setIsPaused(false);
+      setSession(null);
+      stopCamera();
+      navigate('/patient/dashboard');
+    } catch (error) {
+      console.error('Failed to end session:', error);
+      setError('Failed to end session');
+    }
+  }, [session, stopCamera, navigate]);
+
+  const pauseSession = () => {
+    setIsPaused(!isPaused);
   };
 
   const startSession = async () => {
@@ -466,25 +436,56 @@ const LiveExercisePage: React.FC = () => {
     }
   };
 
-  const pauseSession = () => {
-    setIsPaused(!isPaused);
+  const handleExerciseSelect = (selectedExercise: Exercise) => {
+    setExercise(selectedExercise);
+    setShowExerciseSelector(false);
+    // Update URL without reload - path must match Route in App.tsx
+    navigate(`/patient/exercise/${selectedExercise.id}`, { replace: true });
   };
 
-  const endSession = async () => {
-    try {
-      if (session) {
-        await apiService.endSession(session.id);
+  // Handle canvas resize
+  useEffect(() => {
+    const handleResize = () => {
+      if (canvasRef.current && cameraActive) {
+        const container = canvasRef.current.parentElement;
+        if (container) {
+          const rect = container.getBoundingClientRect();
+          canvasRef.current.width = rect.width;
+          canvasRef.current.height = rect.height;
+        }
       }
-      setIsRecording(false);
-      setIsPaused(false);
-      setSession(null);
-      stopCamera();
-      navigate('/patient/dashboard');
-    } catch (error) {
-      console.error('Failed to end session:', error);
-      setError('Failed to end session');
+    };
+
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [cameraActive]);
+
+  useEffect(() => {
+    if (isRecording && !isPaused) {
+      intervalRef.current = setInterval(() => {
+        setSessionTime(prev => {
+          const newTime = prev + 1;
+          if (sessionLimit && newTime >= sessionLimit) {
+            endSession();
+            return prev;
+          }
+          return newTime;
+        });
+      }, 1000);
+    } else {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
     }
-  };
+
+    return () => {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+      }
+    };
+  }, [isRecording, isPaused, sessionLimit, endSession]);
+
+
 
   /* const resetSession = () => {
     setSessionTime(0);
