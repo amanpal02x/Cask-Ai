@@ -80,60 +80,63 @@ const ExerciseSimulator: React.FC<ExerciseSimulatorProps> = ({
       });
     }
 
-    // Shoulder Abduction simulation
+    // Shoulder Abduction simulation - More premium arc and body movement
     if (n.includes('shoulder abduction') || n.includes('abduction')) {
-      return Array.from({ length: 80 }, (_, i) => {
-        const t = Math.sin((i / 80) * Math.PI);
-        const armAngle = t * (Math.PI / 2); // 0 to 90 degrees
-        return {
-          points: {
-            head: { x: 0.5, y: 0.15 },
-            shoulder: { x: 0.5, y: 0.25 },
-            hip: { x: 0.5, y: 0.55 },
-            elbow_l: { x: 0.5 - Math.sin(armAngle) * 0.15, y: 0.25 + Math.cos(armAngle) * 0.15 },
-            elbow_r: { x: 0.5 + Math.sin(armAngle) * 0.15, y: 0.25 + Math.cos(armAngle) * 0.15 },
-            wrist_l: { x: 0.5 - Math.sin(armAngle) * 0.35, y: 0.25 + Math.cos(armAngle) * 0.35 },
-            wrist_r: { x: 0.5 + Math.sin(armAngle) * 0.35, y: 0.25 + Math.cos(armAngle) * 0.35 },
-            knee_l: { x: 0.45, y: 0.75 },
-            knee_r: { x: 0.55, y: 0.75 },
-            ankle_l: { x: 0.45, y: 0.95 },
-            ankle_r: { x: 0.55, y: 0.95 }
-          }
-        };
-      });
-    }
-
-    // Plank simulation
-    if (n.includes('plank')) {
-      return Array.from({ length: 60 }, (_, i) => {
-        const jitter = Math.sin(i * 0.8) * 0.003;
-        return {
-          points: {
-            head: { x: 0.15, y: 0.65 + jitter },
-            shoulder: { x: 0.25, y: 0.7 + jitter },
-            elbow: { x: 0.25, y: 0.85 },
-            hip: { x: 0.55, y: 0.7 + jitter },
-            knee: { x: 0.75, y: 0.7 + jitter },
-            ankle: { x: 0.9, y: 0.7 }
-          }
-        };
-      });
-    }
-
-    // Lunge simulation
-    if (n.includes('lunge')) {
       return Array.from({ length: 100 }, (_, i) => {
         const t = Math.sin((i / 100) * Math.PI);
-        const drop = t * 0.25;
+        const armAngle = t * (Math.PI / 1.8); // Slightly past 90 deg
+        const bodySway = Math.sin((i / 100) * Math.PI * 2) * 0.01;
         return {
           points: {
-            head: { x: 0.5, y: 0.15 + drop },
-            shoulder: { x: 0.5, y: 0.25 + drop },
+            head: { x: 0.5 + bodySway, y: 0.14 },
+            shoulder: { x: 0.5 + bodySway, y: 0.25 },
+            hip: { x: 0.5, y: 0.55 },
+            elbow_l: { x: 0.5 - Math.sin(armAngle) * 0.18, y: 0.25 + Math.cos(armAngle) * 0.18 },
+            elbow_r: { x: 0.5 + Math.sin(armAngle) * 0.18, y: 0.25 + Math.cos(armAngle) * 0.18 },
+            wrist_l: { x: 0.5 - Math.sin(armAngle) * 0.38, y: 0.25 + Math.cos(armAngle) * 0.38 },
+            wrist_r: { x: 0.5 + Math.sin(armAngle) * 0.38, y: 0.25 + Math.cos(armAngle) * 0.38 },
+            knee_l: { x: 0.44, y: 0.75 },
+            knee_r: { x: 0.56, y: 0.75 },
+            ankle_l: { x: 0.44, y: 0.96 },
+            ankle_r: { x: 0.56, y: 0.96 }
+          }
+        };
+      });
+    }
+
+    // Plank simulation - Added stability trembling for premium feel
+    if (n.includes('plank')) {
+      return Array.from({ length: 60 }, (_, i) => {
+        const tremble = Math.sin(i * 1.5) * 0.002;
+        const breath = Math.sin(i * 0.2) * 0.005;
+        return {
+          points: {
+            head: { x: 0.12, y: 0.65 + tremble + breath },
+            shoulder: { x: 0.22, y: 0.7 + tremble },
+            elbow: { x: 0.22, y: 0.88 },
+            hip: { x: 0.52, y: 0.72 + tremble + breath },
+            knee: { x: 0.75, y: 0.74 + tremble },
+            ankle: { x: 0.92, y: 0.75 }
+          }
+        };
+      });
+    }
+
+    // Lunge simulation - Improved balance and depth
+    if (n.includes('lunge')) {
+      return Array.from({ length: 120 }, (_, i) => {
+        const t = Math.sin((i / 120) * Math.PI);
+        const drop = t * 0.28;
+        const torsoLean = t * 0.02;
+        return {
+          points: {
+            head: { x: 0.5 + torsoLean, y: 0.14 + drop },
+            shoulder: { x: 0.5 + torsoLean, y: 0.25 + drop },
             hip: { x: 0.5, y: 0.55 + drop },
-            knee_l: { x: 0.7, y: 0.65 + drop * 0.5 }, // Front knee
-            ankle_l: { x: 0.7, y: 0.95 },
-            knee_r: { x: 0.3, y: 0.7 + drop * 1.1 }, // Back knee
-            ankle_r: { x: 0.1, y: 0.95 }
+            knee_l: { x: 0.72, y: 0.62 + drop * 0.4 }, // Front knee stability
+            ankle_l: { x: 0.72, y: 0.96 },
+            knee_r: { x: 0.28, y: 0.7 + drop * 1.05 }, // Back knee depth
+            ankle_r: { x: 0.12, y: 0.96 }
           }
         };
       });
