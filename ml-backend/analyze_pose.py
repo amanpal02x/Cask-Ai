@@ -40,33 +40,59 @@ def analyze_pose(landmarks, exercise, session_state=None):
             }
 
         if exercise == "squat":
-            hip = [landmarks[23]['x'], landmarks[23]['y']]
-            knee = [landmarks[25]['x'], landmarks[25]['y']]
-            ankle = [landmarks[27]['x'], landmarks[27]['y']]
-            shoulder = [landmarks[11]['x'], landmarks[11]['y']]
+            # Check both sides and use the most visible one
+            l_shoulder = landmarks[11]
+            r_shoulder = landmarks[12]
+            l_hip = landmarks[23]
+            r_hip = landmarks[24]
+            l_knee = landmarks[25]
+            r_knee = landmarks[26]
+            l_ankle = landmarks[27]
+            r_ankle = landmarks[28]
             
+            # Use visibility to decide which side to use
+            l_vis = (l_shoulder.get('visibility', 0) + l_hip.get('visibility', 0) + l_knee.get('visibility', 0) + l_ankle.get('visibility', 0)) / 4
+            r_vis = (r_shoulder.get('visibility', 0) + r_hip.get('visibility', 0) + r_knee.get('visibility', 0) + r_ankle.get('visibility', 0)) / 4
+            
+            if l_vis >= r_vis:
+                shoulder = [l_shoulder['x'], l_shoulder['y']]
+                hip = [l_hip['x'], l_hip['y']]
+                knee = [l_knee['x'], l_knee['y']]
+                ankle = [l_ankle['x'], l_ankle['y']]
+                ankle_vis = l_ankle.get('visibility', 0)
+            else:
+                shoulder = [r_shoulder['x'], r_shoulder['y']]
+                hip = [r_hip['x'], r_hip['y']]
+                knee = [r_knee['x'], r_knee['y']]
+                ankle = [r_ankle['x'], r_ankle['y']]
+                ankle_vis = r_ankle.get('visibility', 0)
+
+            # Accuracy calculation based on ideal ranges
             knee_angle = calculate_angle(hip, knee, ankle)
             back_angle = calculate_angle(shoulder, hip, knee)
             angles["knee"] = knee_angle
             
-            # Accuracy calculation based on ideal ranges
-            # Ideal knee angle at bottom is < 100, ideal back angle is > 150
-            if stage == "down":
-                deviation = max(0, knee_angle - 100)
-                current_accuracy -= (deviation * 0.5)
-            
-            if back_angle < 140:
-                current_accuracy -= 20
-                feedback.append("Keep your chest up and back straight")
+            if ankle_vis < 0.3:
+                feedback.append("Move back so your feet are visible")
+                current_accuracy = 0
+            else:
+                # Normal squat analysis
+                if stage == "down":
+                    deviation = max(0, knee_angle - 100)
+                    current_accuracy -= (deviation * 0.5)
+                
+                if back_angle < 140:
+                    current_accuracy -= 20
+                    feedback.append("Keep your chest up and back straight")
 
-            if knee_angle > 160:
-                if stage == "down": rep_count += 1
-                stage = "up"
-            elif knee_angle < 110:
-                stage = "down"
-            
-            if stage == "down" and knee_angle > 120:
-                feedback.append("Go lower! Aim for thighs parallel to floor")
+                if knee_angle > 160:
+                    if stage == "down": rep_count += 1
+                    stage = "up"
+                elif knee_angle < 120: # Slightly more lenient squat depth
+                    stage = "down"
+                
+                if stage == "down" and knee_angle > 130:
+                    feedback.append("Go lower! Aim for thighs parallel to floor")
 
         elif exercise == "pushup":
             shoulder = [landmarks[11]['x'], landmarks[11]['y']]

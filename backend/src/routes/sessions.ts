@@ -21,6 +21,6 @@ router.post('/:sessionId/end', endSession);
 router.get('/history', getSessionHistory);
 router.get('/:sessionId', getSession);
 router.post('/:sessionId/video', upload.single('video'), uploadSessionVideo);
-router.post('/:sessionId/analyze', analyzeFrame);
+router.post('/:sessionId/analyze-pose', analyzeFrame);
 
 export default router;

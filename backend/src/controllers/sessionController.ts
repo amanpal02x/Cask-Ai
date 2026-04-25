@@ -315,14 +315,14 @@ export const analyzeFrame = async (req: Request, res: Response) => {
     };
 
     if (Math.random() > 0.8) { // Save approx 20% of analyzed frames to DB to save space/perf
-        await SessionService.addPoseFrame(sessionId, frameData);
+        SessionService.addPoseFrame(sessionId, frameData).catch(err => console.error("Error saving pose frame:", err));
     }
-
+ 
     // Update rep count from ML results
     let currentRepCount = session.reps || 0;
     if (result.repCount !== undefined && result.repCount > currentRepCount) {
       currentRepCount = result.repCount;
-      await SessionService.updateSessionReps(sessionId, currentRepCount);
+      SessionService.updateSessionReps(sessionId, currentRepCount).catch(err => console.error("Error updating reps:", err));
     }
 
     const response: ApiResponse<{
