@@ -99,8 +99,8 @@ class ApiService {
     return response.data;
   }
 
-  async endSession(sessionId: string): Promise<ApiResponse<ExerciseSession>> {
-    const response = await this.api.post(`/sessions/${sessionId}/end`);
+  async endSession(sessionId: string, endData?: any): Promise<ApiResponse<ExerciseSession>> {
+    const response = await this.api.post(`/sessions/${sessionId}/end`, endData);
     return response.data;
   }
 

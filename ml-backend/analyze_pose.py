@@ -67,22 +67,22 @@ def analyze_pose(landmarks, exercise, session_state=None):
                 ankle = [r_ankle['x'], r_ankle['y']]
                 ankle_vis = r_ankle.get('visibility', 0)
 
-            # Accuracy calculation based on ideal ranges
-            knee_angle = calculate_angle(hip, knee, ankle)
-            back_angle = calculate_angle(shoulder, hip, knee)
-            angles["knee"] = knee_angle
-            
             if ankle_vis < 0.3:
                 feedback.append("Move back so your feet are visible")
                 current_accuracy = 0
+                # Don't count reps or update stage if ankles are missing
             else:
                 # Normal squat analysis
+                knee_angle = calculate_angle(hip, knee, ankle)
+                back_angle = calculate_angle(shoulder, hip, knee)
+                angles["knee"] = knee_angle
+                
                 if stage == "down":
                     deviation = max(0, knee_angle - 100)
-                    current_accuracy -= (deviation * 0.5)
+                    current_accuracy = max(0, 100 - (deviation * 0.5))
                 
                 if back_angle < 140:
-                    current_accuracy -= 20
+                    current_accuracy = max(0, current_accuracy - 20)
                     feedback.append("Keep your chest up and back straight")
 
                 if knee_angle > 160:

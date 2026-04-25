@@ -134,36 +134,6 @@ const PostureGuidance: React.FC<PostureGuidanceProps> = ({
           </div>
         )}
 
-        {/* Real-time Feedback */}
-        {feedback && feedback.length > 0 && (
-          <div className="mb-4">
-            <h4 className="text-sm font-medium text-gray-700 mb-2">Form Feedback:</h4>
-            <div className="space-y-1">
-              {feedback.map((item, index) => (
-                <div key={index} className={`p-2 rounded text-xs ${
-                  item.toLowerCase().includes('good') || item.toLowerCase().includes('great') || item.toLowerCase().includes('plank form')
-                    ? 'bg-green-50 text-green-700' 
-                    : 'bg-yellow-50 text-yellow-700'
-                }`}>
-                  {item}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* General Exercise Tips */}
-        <div>
-          <h4 className="text-sm font-medium text-gray-700 mb-2">General Tips:</h4>
-          <ul className="space-y-1">
-            {exerciseTips.map((tip, index) => (
-              <li key={index} className="flex items-start text-xs text-gray-600">
-                <CheckCircle className="h-3 w-3 text-green-400 mr-2 mt-0.5 flex-shrink-0" />
-                {tip}
-              </li>
-            ))}
-          </ul>
-        </div>
       </div>
     </div>
   );

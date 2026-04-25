@@ -129,6 +129,10 @@ const LiveExercisePage: React.FC = () => {
       if (response.success && response.data) {
         setAccuracy(response.data.accuracy);
         
+        // Track cumulative accuracy for average at end of session
+        (window as any)._sessionAccuracyTotal = ((window as any)._sessionAccuracyTotal || 0) + response.data.accuracy;
+        (window as any)._sessionAccuracyCount = ((window as any)._sessionAccuracyCount || 0) + 1;
+        
         // Update rep count if provided
         if (response.data.repCount !== undefined) {
           setRepCount(response.data.repCount);
@@ -140,6 +144,7 @@ const LiveExercisePage: React.FC = () => {
         setFeedback({
           isCorrect: response.data.isCorrectForm ?? (response.data.accuracy > 70),
           message: feedbackMessage,
+          accuracy: response.data.accuracy, // Added for sync with PostureGuidance
           confidence: (response.data.confidence ?? response.data.accuracy / 100),
           timestamp: Date.now(),
           suggestions: rawFeedback // Store the raw list for components
@@ -410,7 +415,27 @@ const LiveExercisePage: React.FC = () => {
   const endSession = useCallback(async () => {
     try {
       if (session) {
-        await apiService.endSession(session.id);
+        const avgAccuracy = (window as any)._sessionAccuracyCount > 0 
+          ? Math.round((window as any)._sessionAccuracyTotal / (window as any)._sessionAccuracyCount)
+          : (accuracy || 0);
+
+        const endData = {
+          totalReps: repCount,
+          averageScore: avgAccuracy,
+          maxScore: avgAccuracy,
+          minScore: avgAccuracy,
+          overallFeedback: [feedback?.message || 'Session completed'],
+          improvementAreas: [],
+          strengths: [],
+          repAnalysis: [],
+          videoUrl: ''
+        };
+
+        await apiService.endSession(session.id, endData);
+        
+        // Reset counters
+        (window as any)._sessionAccuracyTotal = 0;
+        (window as any)._sessionAccuracyCount = 0;
       }
       setIsRecording(false);
       setIsPaused(false);
