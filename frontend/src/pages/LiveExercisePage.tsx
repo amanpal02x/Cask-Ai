@@ -235,9 +235,13 @@ const LiveExercisePage: React.FC = () => {
             radius: 3
           });
 
-          // Analyze pose if session is active
+          // Analyze pose if session is active - throttling to approx 5 FPS (every 200ms)
           if (isRecordingRef.current && sessionRef.current && !isPausedRef.current) {
-            analyzePoseRef.current(results.poseLandmarks);
+            const now = Date.now();
+            if (!videoRef.current || !(videoRef.current as any)._lastAnalyzeTime || now - (videoRef.current as any)._lastAnalyzeTime > 200) {
+              analyzePoseRef.current(results.poseLandmarks);
+              if (videoRef.current) (videoRef.current as any)._lastAnalyzeTime = now;
+            }
           }
         } else {
           setPoseDetected(false);

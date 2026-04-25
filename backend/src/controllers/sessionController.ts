@@ -304,7 +304,8 @@ export const analyzeFrame = async (req: Request, res: Response) => {
     // Call Python ML backend for pose analysis with exercise name and session context
     const result = await analyzePose(landmarks, exerciseName, sessionId);
 
-    // Add pose frame to session
+    // Add pose frame to session (throttle DB writes - only save every 5th frame)
+    // We use a global or session-based counter here. For simplicity, let's use a random sample or a timestamp check.
     const frameData = {
       timestamp: Date.now(),
       landmarks: landmarks,
@@ -313,7 +314,9 @@ export const analyzeFrame = async (req: Request, res: Response) => {
       confidence: result.confidence ?? (result.accuracy / 100)
     };
 
-    await SessionService.addPoseFrame(sessionId, frameData);
+    if (Math.random() > 0.8) { // Save approx 20% of analyzed frames to DB to save space/perf
+        await SessionService.addPoseFrame(sessionId, frameData);
+    }
 
     // Update rep count from ML results
     let currentRepCount = session.reps || 0;

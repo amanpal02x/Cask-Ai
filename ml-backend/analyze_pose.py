@@ -29,8 +29,8 @@ def analyze_pose(landmarks, exercise, session_state=None):
 
     try:
         # Check landmark visibility
-        visible_keypoints = [lm for lm in landmarks if lm.get('visibility', 0) > 0.5]
-        if len(visible_keypoints) < 15:
+        visible_keypoints = [lm for lm in landmarks if lm.get('visibility', 0) > 0.3]
+        if len(visible_keypoints) < 8:
             return {
                 "repCount": rep_count,
                 "angles": {},
@@ -94,9 +94,26 @@ def analyze_pose(landmarks, exercise, session_state=None):
                 stage = "down"
 
         elif exercise == "plank":
-            shoulder = [landmarks[11]['x'], landmarks[11]['y']]
-            hip = [landmarks[23]['x'], landmarks[23]['y']]
-            ankle = [landmarks[27]['x'], landmarks[27]['y']]
+            # Check both sides and use the most visible one
+            l_shoulder = landmarks[11]
+            r_shoulder = landmarks[12]
+            l_hip = landmarks[23]
+            r_hip = landmarks[24]
+            l_ankle = landmarks[27]
+            r_ankle = landmarks[28]
+            
+            # Use visibility to decide which side to use
+            l_vis = (l_shoulder.get('visibility', 0) + l_hip.get('visibility', 0) + l_ankle.get('visibility', 0)) / 3
+            r_vis = (r_shoulder.get('visibility', 0) + r_hip.get('visibility', 0) + r_ankle.get('visibility', 0)) / 3
+            
+            if l_vis >= r_vis:
+                shoulder = [l_shoulder['x'], l_shoulder['y']]
+                hip = [l_hip['x'], l_hip['y']]
+                ankle = [l_ankle['x'], l_ankle['y']]
+            else:
+                shoulder = [r_shoulder['x'], r_shoulder['y']]
+                hip = [r_hip['x'], r_hip['y']]
+                ankle = [r_ankle['x'], r_ankle['y']]
             
             body_angle = calculate_angle(shoulder, hip, ankle)
             angles["body_alignment"] = body_angle
@@ -104,13 +121,14 @@ def analyze_pose(landmarks, exercise, session_state=None):
             deviation = abs(180 - body_angle)
             current_accuracy = max(0, 100 - (deviation * 2))
             
-            if body_angle < 165:
+            if body_angle < 160:
                 feedback.append("Don't drop your hips")
-            elif body_angle > 195:
+            elif body_angle > 200:
                 feedback.append("Hips too high!")
             else:
                 consecutive_good_frames += 1
-                if consecutive_good_frames >= 60:
+                # Increment "reps" (seconds) every 5 good frames (approx 1 second at 5 FPS)
+                if consecutive_good_frames >= 5:
                     rep_count += 1
                     consecutive_good_frames = 0
 
