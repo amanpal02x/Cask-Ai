@@ -62,15 +62,6 @@ const PostureGuidance: React.FC<PostureGuidanceProps> = ({
     return tips[posture] || ['Focus on maintaining good form and posture'];
   };
 
-  const getExerciseSpecificTips = () => {
-    return [
-      'Keep your core engaged throughout the movement',
-      'Breathe steadily and don\'t hold your breath',
-      'Move slowly and with control',
-      'Stop if you feel any pain or discomfort'
-    ];
-  };
-
   if (!isRecording && !currentPosture) {
     return (
       <div className="bg-white shadow rounded-lg">
@@ -89,7 +80,6 @@ const PostureGuidance: React.FC<PostureGuidanceProps> = ({
 
   const accuracyInfo = accuracy !== null && accuracy !== undefined ? getAccuracyLevel(accuracy) : null;
   const postureTips = getPostureTips(currentPosture);
-  const exerciseTips = getExerciseSpecificTips();
 
   return (
     <div className="bg-white shadow rounded-lg">

@@ -446,7 +446,7 @@ const LiveExercisePage: React.FC = () => {
       console.error('Failed to end session:', error);
       setError('Failed to end session');
     }
-  }, [session, stopCamera, navigate]);
+  }, [session, stopCamera, navigate, accuracy, repCount, feedback?.message]);
 
   const pauseSession = () => {
     setIsPaused(!isPaused);
