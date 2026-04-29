@@ -49,8 +49,7 @@ const ChatWidget = forwardRef<ChatWidgetRef, ChatWidgetProps>((props, ref) => {
         isOpen && 
         widgetRef.current && 
         !widgetRef.current.contains(target) &&
-        buttonRef.current &&
-        !buttonRef.current.contains(target)
+        (!buttonRef.current || !buttonRef.current.contains(target))
       ) {
         setIsOpen(false);
       }
@@ -259,26 +258,22 @@ const ChatWidget = forwardRef<ChatWidgetRef, ChatWidgetProps>((props, ref) => {
 
   return (
     <>
-      <button
-        ref={buttonRef}
-        onClick={() => setIsOpen(s => !s)}
-        className={`fixed bottom-6 right-6 z-50 rounded-2xl shadow-xl transition-all duration-500 flex items-center justify-center group ${
-          isOpen ? 'bg-rose-500 rotate-90 w-12 h-12' : 'bg-violet-600 hover:bg-violet-700 w-14 h-14'
-        }`}
-        title="Chat"
-        data-chat-button
-      >
-        {isOpen ? (
-          <X className="h-6 w-6 text-white" />
-        ) : (
+      {!isOpen && (
+        <button
+          ref={buttonRef}
+          onClick={() => setIsOpen(s => !s)}
+          className={`fixed bottom-6 right-6 z-50 rounded-2xl shadow-xl transition-all duration-500 flex items-center justify-center group bg-violet-600 hover:bg-violet-700 w-14 h-14`}
+          title="Chat"
+          data-chat-button
+        >
           <div className="relative">
             <MessageSquare className="h-6 w-6 text-white group-hover:scale-110 transition-transform" />
-            {!isOpen && isConnected && (
+            {isConnected && (
               <span className="absolute -top-1 -right-1 h-3 w-3 bg-emerald-400 border-2 border-violet-600 rounded-full" />
             )}
           </div>
-        )}
-      </button>
+        </button>
+      )}
  
       {isOpen && (
         <div 
