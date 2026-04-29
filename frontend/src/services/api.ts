@@ -182,7 +182,7 @@ async analyzePose(sessionId: string, landmarks: number[][]): Promise<ApiResponse
   }
 
   async updateConnectionStatus(patientId: string, status: 'active' | 'terminated'): Promise<ApiResponse<any>> {
-    const response = await this.api.put(`/patients/${patientId}/status`, { status });
+    const response = await this.api.put(`/doctor/patients/${patientId}/status`, { status });
     return response.data;
   }
 
