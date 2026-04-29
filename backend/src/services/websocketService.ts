@@ -24,10 +24,13 @@ class WebSocketService {
     });
 
     this.io.on('connection', (socket) => {
-      console.log('Client connected:', socket.id);
+      
+      
+      
 
       // Handle authentication
       socket.on('authenticate', async (data: { token: string, userId: string, userRole: string }) => {
+        
         try {
           // In a real implementation, you would verify the JWT token here
           // For now, we'll trust the client data
@@ -50,9 +53,9 @@ class WebSocketService {
           await this.notifyStatusChange(data.userId, data.userRole, true);
 
           socket.emit('authenticated', { success: true });
-          console.log(`User ${data.userId} authenticated and online`);
+          
         } catch (error) {
-          console.error('Authentication error:', error);
+          
           socket.emit('authentication_error', { message: 'Authentication failed' });
         }
       });
@@ -64,7 +67,7 @@ class WebSocketService {
           await this.updateUserOnlineStatus(user.userId, false);
           await this.notifyStatusChange(user.userId, user.userRole, false);
           this.connectedUsers.delete(socket.id);
-          console.log(`User ${user.userId} disconnected and offline`);
+          
         }
       });
 
@@ -171,7 +174,7 @@ class WebSocketService {
               }
             });
           } catch (err) {
-            console.error('relationship_send error:', err);
+            
             // Emit error back to sender
             socket.emit('message_error', { 
               clientMessageId: data.clientMessageId,
@@ -224,7 +227,7 @@ class WebSocketService {
               readAt: new Date()
             });
           } catch (err) {
-            console.error('mark_messages_read error:', err);
+            
           }
         }
       );
@@ -261,7 +264,7 @@ class WebSocketService {
               messages: messages.reverse() // Reverse to show oldest first
             });
           } catch (err) {
-            console.error('load_chat_history error:', err);
+            
             socket.emit('chat_history_error', { 
               relationshipId: data.relationshipId,
               error: 'Failed to load chat history' 
@@ -279,7 +282,7 @@ class WebSocketService {
         lastSeen: new Date()
       });
     } catch (error) {
-      console.error('Error updating user online status:', error);
+      
     }
   }
 
@@ -317,7 +320,7 @@ class WebSocketService {
         }
       }
     } catch (error) {
-      console.error('Error notifying status change:', error);
+      
     }
   }
 
@@ -358,7 +361,7 @@ class WebSocketService {
 
       this.io?.to(recipientId).emit('notification', notification);
     } catch (error) {
-      console.error('Error sending chat notification:', error);
+      
     }
   }
 

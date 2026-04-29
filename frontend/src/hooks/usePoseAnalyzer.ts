@@ -33,9 +33,9 @@ export default function usePoseAnalyzer(sessionId: string) {
             landmark.visibility || 0
           ]);
           const res = await apiService.analyzePose(sessionId, landmarks);
-          console.log("Backend response:", res);
+          
         } catch (err) {
-          console.error("ML backend error:", err);
+          
         }
       }
     });

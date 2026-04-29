@@ -26,19 +26,27 @@ export const getPatients = async (req: Request, res: Response) => {
     .populate('patientId', 'name email role avatar createdAt')
     .sort({ lastInteraction: -1 });
 
-    const patients = patientRelations.map(relation => ({
-      relationshipId: (relation as any)._id.toString(),
-      id: relation.patientId._id.toString(),
-      name: (relation.patientId as any).name,
-      email: (relation.patientId as any).email,
-      role: (relation.patientId as any).role,
-      avatar: (relation.patientId as any).avatar,
-      createdAt: (relation.patientId as any).createdAt.toISOString(),
-      lastInteraction: relation.lastInteraction?.toISOString(),
-      totalSessions: relation.totalSessions || 0,
-      averageScore: relation.averageScore || 0,
-      status: relation.status
-    }));
+    
+    
+    const patients = patientRelations.map(relation => {
+      if (!relation.patientId) {
+        
+        return null;
+      }
+      return {
+        relationshipId: (relation as any)._id.toString(),
+        id: (relation.patientId as any)._id.toString(),
+        name: (relation.patientId as any).name,
+        email: (relation.patientId as any).email,
+        role: (relation.patientId as any).role,
+        avatar: (relation.patientId as any).avatar,
+        createdAt: (relation.patientId as any).createdAt ? (relation.patientId as any).createdAt.toISOString() : new Date().toISOString(),
+        lastInteraction: relation.lastInteraction?.toISOString(),
+        totalSessions: relation.totalSessions || 0,
+        averageScore: relation.averageScore || 0,
+        status: relation.status
+      };
+    }).filter(Boolean);
     
     const response: ApiResponse<typeof patients> = {
       success: true,
@@ -48,7 +56,7 @@ export const getPatients = async (req: Request, res: Response) => {
     
     res.json(response);
   } catch (error) {
-    console.error('Error fetching patients:', error);
+    
     const response: ApiResponse<null> = {
       success: false,
       data: null,
@@ -139,7 +147,7 @@ export const assignPatient = async (req: Request, res: Response) => {
     
     res.status(201).json(response);
   } catch (error) {
-    console.error('Error assigning patient:', error);
+    
     const response: ApiResponse<null> = {
       success: false,
       data: null,
@@ -255,7 +263,7 @@ export const requestDoctorConnection = async (req: Request, res: Response) => {
     
     res.json(response);
   } catch (error) {
-    console.error('Error requesting doctor connection:', error);
+    
     const response: ApiResponse<null> = {
       success: false,
       data: null,
@@ -301,7 +309,7 @@ export const cancelConnectionRequest = async (req: Request, res: Response) => {
     };
     res.json(response);
   } catch (error) {
-    console.error('Error cancelling connection request:', error);
+    
     const response: ApiResponse<null> = {
       success: false,
       data: null,
@@ -357,6 +365,27 @@ export const updateConnectionStatus = async (req: Request, res: Response) => {
     }
     await relation.save();
 
+    // Create activity log for the connection
+    if (status === 'active') {
+      try {
+        const { default: Activity } = await import('../models/Activity');
+        const doctor = await User.findById(doctorId);
+        const patient = await User.findById(patientId);
+        
+        await Activity.create({
+          userId: patientId,
+          relatedUserId: doctorId,
+          type: 'connection_approved',
+          title: 'Doctor Connection Approved',
+          description: `${doctor?.name || 'Doctor'} has approved the connection request from ${patient?.name || 'Patient'}.`,
+          metadata: { doctorId, patientId },
+          visibility: 'public'
+        });
+      } catch (err) {
+        
+      }
+    }
+
     // Send notification to patient
     const notificationMessage = status === 'active' 
       ? 'Your connection request has been approved! You can now communicate with your doctor.'
@@ -399,7 +428,7 @@ export const updateConnectionStatus = async (req: Request, res: Response) => {
     
     res.json(response);
   } catch (error) {
-    console.error('Error updating connection status:', error);
+    
     const response: ApiResponse<null> = {
       success: false,
       data: null,
@@ -452,7 +481,7 @@ export const getPatientProgress = async (req: Request, res: Response) => {
     
     res.json(response);
   } catch (error) {
-    console.error('Error fetching patient progress:', error);
+    
     const response: ApiResponse<null> = {
       success: false,
       data: null,
@@ -528,7 +557,7 @@ export const sendRecommendation = async (req: Request, res: Response) => {
     
     res.json(response);
   } catch (error) {
-    console.error('Error sending recommendation:', error);
+    
     const response: ApiResponse<null> = {
       success: false,
       data: null,
@@ -588,7 +617,7 @@ export const updatePatientSettings = async (req: Request, res: Response) => {
     
     res.json(response);
   } catch (error) {
-    console.error('Error updating patient settings:', error);
+    
     const response: ApiResponse<null> = {
       success: false,
       data: null,
@@ -654,7 +683,7 @@ export const getPatientDetails = async (req: Request, res: Response) => {
     
     res.json(response);
   } catch (error) {
-    console.error('Error fetching patient details:', error);
+    
     const response: ApiResponse<null> = {
       success: false,
       data: null,
@@ -722,7 +751,7 @@ export const removePatient = async (req: Request, res: Response) => {
     
     res.json(response);
   } catch (error) {
-    console.error('Error removing patient:', error);
+    
     const response: ApiResponse<null> = {
       success: false,
       data: null,
@@ -771,7 +800,7 @@ export const getDoctors = async (req: Request, res: Response) => {
     };
     res.json(response);
   } catch (error) {
-    console.error('Error fetching doctors:', error);
+    
     const response: ApiResponse<null> = {
       success: false,
       data: null,
@@ -821,7 +850,7 @@ export const getAllPatientProgress = async (req: Request, res: Response) => {
     
     res.json(response);
   } catch (error) {
-    console.error('Error fetching patient progress:', error);
+    
     const response: ApiResponse<null> = {
       success: false,
       data: null,
@@ -896,7 +925,7 @@ export const getSuggestions = async (req: Request, res: Response) => {
     
     res.json(response);
   } catch (error) {
-    console.error('Error fetching suggestions:', error);
+    
     const response: ApiResponse<null> = {
       success: false,
       data: null,
@@ -989,7 +1018,7 @@ export const createSuggestion = async (req: Request, res: Response) => {
     
     res.json(response);
   } catch (error) {
-    console.error('Error creating suggestion:', error);
+    
     const response: ApiResponse<null> = {
       success: false,
       data: null,
@@ -1041,7 +1070,7 @@ export const getPatientConnectionStatus = async (req: Request, res: Response) =>
     
     res.json(response);
   } catch (error) {
-    console.error('Error fetching connection status:', error);
+    
     const response: ApiResponse<null> = {
       success: false,
       data: null,
@@ -1089,7 +1118,7 @@ export const getOnlineDoctors = async (req: Request, res: Response) => {
     
     res.json(response);
   } catch (error) {
-    console.error('Error fetching online doctors:', error);
+    
     const response: ApiResponse<null> = {
       success: false,
       data: null,
@@ -1136,7 +1165,7 @@ export const getConnectionRequests = async (req: Request, res: Response) => {
     
     res.json(response);
   } catch (error) {
-    console.error('Error fetching connection requests:', error);
+    
     const response: ApiResponse<null> = {
       success: false,
       data: null,
@@ -1173,7 +1202,7 @@ export const updateUserOnlineStatus = async (req: Request, res: Response) => {
     
     res.json(response);
   } catch (error) {
-    console.error('Error updating online status:', error);
+    
     const response: ApiResponse<null> = {
       success: false,
       data: null,
@@ -1239,7 +1268,7 @@ export const disconnectFromDoctor = async (req: Request, res: Response) => {
     
     res.json(response);
   } catch (error) {
-    console.error('Error disconnecting from doctor:', error);
+    
     const response: ApiResponse<null> = {
       success: false,
       data: null,

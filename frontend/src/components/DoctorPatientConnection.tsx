@@ -85,7 +85,7 @@ const DoctorPatientConnection: React.FC<DoctorPatientConnectionProps> = ({
         if (suggestionsResponse.success) setSuggestions(suggestionsResponse.data || []);
       }
     } catch (error) {
-      console.error('Failed to fetch data:', error);
+      
     } finally {
       setLoading(false);
     }
@@ -103,7 +103,7 @@ const DoctorPatientConnection: React.FC<DoctorPatientConnectionProps> = ({
         setShowConnectModal(false);
       }
     } catch (error) {
-      console.error('Failed to connect patient:', error);
+      
     }
   };
 
@@ -115,7 +115,7 @@ const DoctorPatientConnection: React.FC<DoctorPatientConnectionProps> = ({
         fetchData();
       }
     } catch (error) {
-      console.error('Failed to connect to doctor:', error);
+      
     }
   };
 
@@ -132,7 +132,7 @@ const DoctorPatientConnection: React.FC<DoctorPatientConnectionProps> = ({
         fetchData();
       }
     } catch (error) {
-      console.error('Failed to send suggestion:', error);
+      
     }
   };
 

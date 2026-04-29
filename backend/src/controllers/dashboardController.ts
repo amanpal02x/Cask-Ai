@@ -26,7 +26,7 @@ export const getDashboardStats = async (req: Request, res: Response) => {
     
     res.json(response);
   } catch (error) {
-    console.error('Error fetching dashboard stats:', error);
+    
     const response: ApiResponse<null> = {
       success: false,
       data: null,
@@ -64,7 +64,7 @@ export const getProgressData = async (req: Request, res: Response) => {
     
     res.json(response);
   } catch (error) {
-    console.error('Error fetching progress data:', error);
+    
     const response: ApiResponse<null> = {
       success: false,
       data: null,
@@ -101,7 +101,7 @@ export const getRecentActivity = async (req: Request, res: Response) => {
     
     res.json(response);
   } catch (error) {
-    console.error('Error fetching recent activity:', error);
+    
     const response: ApiResponse<null> = {
       success: false,
       data: null,

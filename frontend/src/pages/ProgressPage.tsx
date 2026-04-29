@@ -29,7 +29,7 @@ const ProgressPage: React.FC = () => {
         if (statsResponse.success) setStats(statsResponse.data!);
         if (progressResponse.success) setProgressData(progressResponse.data!);
       } catch (error) {
-        console.error('Failed to fetch progress data:', error);
+        
       } finally {
         setLoading(false);
       }

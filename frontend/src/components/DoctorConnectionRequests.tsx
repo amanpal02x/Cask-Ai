@@ -4,6 +4,7 @@ import {
   X,
   Clock,
   Users,
+  Sparkles,
 } from 'lucide-react';
 import apiService from '../services/api';
 import LoadingSpinner from './LoadingSpinner';
@@ -20,7 +21,11 @@ interface ConnectionRequest {
   requestedAt: string;
 }
 
-const DoctorConnectionRequests: React.FC = () => {
+interface Props {
+  onRequestProcessed?: () => void;
+}
+
+const DoctorConnectionRequests: React.FC<Props> = ({ onRequestProcessed }) => {
   const { user } = useAuth();
   const [requests, setRequests] = useState<ConnectionRequest[]>([]);
   const [loading, setLoading] = useState(true);
@@ -75,7 +80,7 @@ const DoctorConnectionRequests: React.FC = () => {
         setError('Failed to load connection requests');
       }
     } catch (error) {
-      console.error('Failed to fetch connection requests:', error);
+      
       setError('Unable to reach server. Please try again.');
     } finally {
       setLoading(false);
@@ -87,9 +92,10 @@ const DoctorConnectionRequests: React.FC = () => {
       const response = await apiService.updateConnectionStatus(patientId, 'active');
       if (response.success) {
         fetchConnectionRequests();
+        if (onRequestProcessed) onRequestProcessed();
       }
     } catch (error) {
-      console.error('Failed to approve request:', error);
+      
     }
   };
 
@@ -98,9 +104,10 @@ const DoctorConnectionRequests: React.FC = () => {
       const response = await apiService.updateConnectionStatus(patientId, 'terminated');
       if (response.success) {
         fetchConnectionRequests();
+        if (onRequestProcessed) onRequestProcessed();
       }
     } catch (error) {
-      console.error('Failed to reject request:', error);
+      
     }
   };
 
@@ -117,11 +124,9 @@ const DoctorConnectionRequests: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-4 py-5 sm:p-6">
-          <div className="flex items-center justify-center h-32">
-            <LoadingSpinner size="lg" />
-          </div>
+      <div className="p-6 flex items-center justify-center">
+        <div className="relative">
+          <div className="h-8 w-8 rounded-full border-2 border-violet-100 border-t-violet-600 animate-spin" />
         </div>
       </div>
     );
@@ -129,100 +134,120 @@ const DoctorConnectionRequests: React.FC = () => {
 
   if (error) {
     return (
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-4 py-5 sm:p-6">
-          <div className="bg-red-50 border border-red-200 rounded p-3 text-sm text-red-700">
-            <p className="mb-2">{error}</p>
-            <button
-              onClick={fetchConnectionRequests}
-              className="inline-flex items-center px-3 py-1.5 rounded bg-red-600 text-white hover:bg-red-700"
-            >
-              Retry
-            </button>
-          </div>
+      <div className="px-2">
+        <div className="bg-rose-50/80 backdrop-blur-sm border border-rose-100 rounded-2xl p-4 text-center">
+          <p className="text-[10px] font-bold text-rose-700 mb-2 uppercase tracking-widest">{error}</p>
+          <button
+            onClick={fetchConnectionRequests}
+            className="text-[9px] font-bold text-rose-600 hover:text-rose-800 underline decoration-rose-200"
+          >
+            Try Refreshing
+          </button>
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="bg-white shadow rounded-lg">
-      <div className="px-4 py-5 sm:p-6">
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center">
-            <Users className="h-5 w-5 text-blue-600 mr-2" />
-            <h3 className="text-lg font-medium text-gray-900">Connection Requests</h3>
-          </div>
-          <div className="flex items-center text-sm text-gray-500">
-            <div className={`h-2 w-2 rounded-full mr-2 ${wsConnected ? 'bg-green-500' : 'bg-red-500'}`} />
-            {wsConnected ? 'Live updates' : 'Offline'}
-          </div>
-        </div>
+  if (requests.length === 0) return null;
 
-        {requests.length === 0 ? (
-          <div className="text-center py-8">
-            <Users className="mx-auto h-12 w-12 text-gray-400" />
-            <h3 className="mt-2 text-sm font-medium text-gray-900">No pending requests</h3>
-            <p className="mt-1 text-sm text-gray-500">
-              Patient connection requests will appear here
-            </p>
+  return (
+    <div className="relative group">
+      {/* Decorative Gradient Glow */}
+      <div className="absolute -inset-1 bg-gradient-to-r from-violet-400/20 to-rose-400/20 rounded-3xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200" />
+      
+      <div className="relative glass-card overflow-hidden border border-white/40 shadow-sm">
+        <div className="p-4 sm:p-5">
+          <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center">
+              <div className="p-2 rounded-xl bg-violet-100/50 text-violet-600 shadow-inner">
+                <Users className="h-4 w-4" />
+              </div>
+              <h3 className="ml-3 text-xs font-bold uppercase tracking-[0.15em] text-violet-900/70">
+                Queue
+              </h3>
+            </div>
+            <div className="flex items-center px-2 py-1 rounded-full bg-white/40 backdrop-blur-md border border-white/60">
+              <div className={`h-1.5 w-1.5 rounded-full mr-2 relative ${wsConnected ? 'bg-green-500' : 'bg-rose-500'}`}>
+                {wsConnected && (
+                   <div className="absolute inset-0 rounded-full bg-green-500 animate-ping opacity-75" />
+                )}
+              </div>
+              <span className={`text-[8px] font-bold uppercase tracking-widest ${wsConnected ? 'text-green-700' : 'text-rose-700'}`}>
+                {wsConnected ? 'Live' : 'Off'}
+              </span>
+            </div>
           </div>
-        ) : (
+
           <div className="space-y-4">
             {requests.map((request) => (
-              <div key={request.id} className="border rounded-lg p-4 bg-gray-50">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start space-x-3">
-                    <div className="flex-shrink-0">
+              <div key={request.id} className="group/item relative p-3 rounded-2xl bg-white/40 border border-white/60 hover:bg-white/60 transition-all duration-300 shadow-sm hover:shadow-md">
+                <div className="flex flex-col">
+                  <div className="flex items-center space-x-3 mb-3">
+                    <div className="flex-shrink-0 relative">
                       {request.patientAvatar ? (
                         <img
-                          className="h-10 w-10 rounded-full"
+                          className="h-10 w-10 rounded-xl shadow-sm object-cover border-2 border-white"
                           src={request.patientAvatar}
                           alt={request.patientName}
                         />
                       ) : (
-                        <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                          <span className="text-sm font-medium text-blue-600">
+                        <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center border-2 border-white shadow-sm">
+                          <span className="text-sm font-bold text-white">
                             {request.patientName.charAt(0)}
                           </span>
                         </div>
                       )}
+                      <div className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full bg-white flex items-center justify-center shadow-sm">
+                        <div className="h-2 w-2 rounded-full bg-emerald-400" />
+                      </div>
                     </div>
                     <div className="flex-1 min-w-0">
-                      <h4 className="text-sm font-medium text-gray-900">
+                      <h4 className="text-[11px] font-bold text-gray-900 leading-tight truncate group-hover/item:text-violet-700 transition-colors">
                         {request.patientName}
                       </h4>
-                      <p className="text-sm text-gray-500">{request.patientEmail}</p>
-                      <p className="text-xs text-gray-600 mt-1">
-                        {request.assignmentReason}
-                      </p>
-                      <div className="flex items-center mt-2 text-xs text-gray-500">
-                        <Clock className="h-3 w-3 mr-1" />
-                        {formatRequestTime(request.requestedAt)}
+                      <div className="flex items-center mt-1 text-[9px] font-medium text-gray-500 truncate">
+                        <span className="truncate">{request.patientEmail}</span>
                       </div>
                     </div>
                   </div>
-                  <div className="flex items-center space-x-2">
-                    <button
-                      onClick={() => handleApproveRequest(request.patientId)}
-                      className="inline-flex items-center px-3 py-1.5 border border-transparent text-xs font-medium rounded-md text-white bg-green-600 hover:bg-green-700"
-                    >
-                      <CheckCircle className="h-3 w-3 mr-1" />
-                      Approve
-                    </button>
-                    <button
-                      onClick={() => handleRejectRequest(request.patientId)}
-                      className="inline-flex items-center px-3 py-1.5 border border-gray-300 text-xs font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50"
-                    >
-                      <X className="h-3 w-3 mr-1" />
-                      Reject
-                    </button>
+                  
+                  <div className="relative mb-4">
+                    <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-violet-200 rounded-full" />
+                    <div className="pl-3 text-[9px] text-gray-600 leading-relaxed line-clamp-2 italic">
+                      "{request.assignmentReason}"
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center text-[9px] font-bold text-gray-400 uppercase tracking-widest bg-gray-50/50 px-2 py-0.5 rounded-lg">
+                      <Clock className="h-2.5 w-2.5 mr-1.5" />
+                      {formatRequestTime(request.requestedAt)}
+                    </div>
+                    <div className="flex space-x-2">
+                      <button
+                        onClick={() => handleRejectRequest(request.patientId)}
+                        className="p-1.5 rounded-lg hover:bg-rose-50 text-gray-400 hover:text-rose-500 transition-colors"
+                        title="Skip"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleApproveRequest(request.patientId)}
+                        className="flex items-center space-x-1.5 bg-violet-600 hover:bg-violet-700 text-white text-[9px] font-bold px-3 py-1.5 rounded-lg shadow-sm shadow-violet-200 transition-all active:scale-95"
+                      >
+                        <CheckCircle className="h-3 w-3" />
+                        <span>Accept</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
             ))}
           </div>
-        )}
+        </div>
+        
+        {/* Bottom Decorative Edge */}
+        <div className="h-1 w-full bg-gradient-to-r from-violet-500/10 via-rose-500/10 to-violet-500/10" />
       </div>
     </div>
   );

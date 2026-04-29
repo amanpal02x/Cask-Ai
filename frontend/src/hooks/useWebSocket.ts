@@ -23,20 +23,29 @@ export const useWebSocket = ({ userId, userRole, token }: UseWebSocketProps) => 
   useEffect(() => {
     if (!userId || !userRole || !token) return;
 
+    // Derive WS URL from API URL if available, otherwise fallback to localhost:8000
+    const apiBaseUrl = process.env.REACT_APP_API_URL || 'http://localhost:8000/api';
+    const wsUrl = process.env.REACT_APP_WS_URL || apiBaseUrl.replace('/api', '');
+    
+    
+
     // Initialize socket connection
-    const socket = io(process.env.REACT_APP_WS_URL || 'http://localhost:8000', {
+    const socket = io(wsUrl, {
       auth: {
         token,
         userId,
         userRole
-      }
+      },
+      transports: ['websocket', 'polling'], // Allow fallback to polling
+      reconnectionAttempts: 5,
+      timeout: 10000
     });
 
     socketRef.current = socket;
 
     // Connection event handlers
     socket.on('connect', () => {
-      console.log('WebSocket connected');
+      
       setIsConnected(true);
       
       // Authenticate with the server
@@ -48,21 +57,21 @@ export const useWebSocket = ({ userId, userRole, token }: UseWebSocketProps) => 
     });
 
     socket.on('disconnect', () => {
-      console.log('WebSocket disconnected');
+      
       setIsConnected(false);
     });
 
     socket.on('authenticated', (data) => {
-      console.log('WebSocket authenticated:', data);
+      
     });
 
     socket.on('authentication_error', (error) => {
-      console.error('WebSocket authentication error:', error);
+      
     });
 
     // Status change handlers
     socket.on('doctor_status_change', (data) => {
-      console.log('Doctor status changed:', data);
+      
       setOnlineUsers(prev => ({
         ...prev,
         [data.doctorId]: data.isOnline
@@ -70,7 +79,7 @@ export const useWebSocket = ({ userId, userRole, token }: UseWebSocketProps) => 
     });
 
     socket.on('patient_status_change', (data) => {
-      console.log('Patient status changed:', data);
+      
       setOnlineUsers(prev => ({
         ...prev,
         [data.patientId]: data.isOnline
@@ -78,13 +87,13 @@ export const useWebSocket = ({ userId, userRole, token }: UseWebSocketProps) => 
     });
 
     socket.on('notification', (notification) => {
-      console.log('Received notification:', notification);
+      
       // You can emit a custom event or use a state management solution here
       window.dispatchEvent(new CustomEvent('websocket-notification', { detail: notification }));
     });
 
     socket.on('relationship_message', (message) => {
-      console.log('Received relationship message:', message);
+      
       window.dispatchEvent(new CustomEvent('websocket-message', { detail: message }));
     });
 

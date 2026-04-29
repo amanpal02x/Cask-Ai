@@ -48,7 +48,7 @@ const PatientDashboard: React.FC = () => {
         // if (exercisesResponse.success) setExercises(exercisesResponse.data || []);
         if (sessionsResponse.success) setRecentSessions(sessionsResponse.data!);
       } catch (error) {
-        console.error('Failed to fetch dashboard data:', error);
+        
       } finally {
         setLoading(false);
       }
@@ -100,7 +100,7 @@ const PatientDashboard: React.FC = () => {
         throw new Error(uploadResponse.message || 'Upload failed');
       }
     } catch (err) {
-      console.error('Upload error:', err);
+      
       setUploadError(err instanceof Error ? err.message : 'An error occurred during upload');
     } finally {
       setIsUploading(false);

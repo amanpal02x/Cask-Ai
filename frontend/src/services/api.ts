@@ -181,6 +181,19 @@ async analyzePose(sessionId: string, landmarks: number[][]): Promise<ApiResponse
     return response.data;
   }
 
+  async getPracticeSessions(limit?: number, offset?: number): Promise<ApiResponse<any[]>> {
+    const params = new URLSearchParams();
+    if (limit) params.append('limit', limit.toString());
+    if (offset) params.append('offset', offset.toString());
+    const response = await this.api.get(`/sessions/practice/history?${params}`);
+    return response.data;
+  }
+
+  async getPracticeProgress(): Promise<ApiResponse<any[]>> {
+    const response = await this.api.get('/doctor/progress');
+    return response.data;
+  }
+
   async updateConnectionStatus(patientId: string, status: 'active' | 'terminated'): Promise<ApiResponse<any>> {
     const response = await this.api.put(`/doctor/patients/${patientId}/status`, { status });
     return response.data;

@@ -1,33 +1,33 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { 
   Users, 
   FileText, 
   BarChart3, 
-  Bell, 
   Activity,
   TrendingUp,
   Target,
   CheckCircle,
-  AlertTriangle,
   UserPlus
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
 import { Patient, DashboardStats } from '../types';
 import apiService from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
-import DoctorConnectionRequests from '../components/DoctorConnectionRequests';
 import { useWebSocket } from '../hooks/useWebSocket';
 import NotificationsSection from '../components/NotificationsSection';
 import ChatWidget from '../components/ChatWidget';
+import '../SereneWellness.css';
 
 const DoctorDashboard: React.FC = () => {
+  const navigate = useNavigate();
   const { user } = useAuth();
   const [stats, setStats] = useState<DashboardStats | null>(null);
   const [patients, setPatients] = useState<Patient[]>([]);
   const [recentActivity, setRecentActivity] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isOnline, setIsOnline] = useState<boolean>(false);
+  const [showActiveModal, setShowActiveModal] = useState(false);
   const chatWidgetRef = useRef<any>(null);
 
   const { updateStatus } = useWebSocket({
@@ -36,25 +36,34 @@ const DoctorDashboard: React.FC = () => {
     token: localStorage.getItem('authToken') || ''
   });
 
-  useEffect(() => {
-    const fetchDashboardData = async () => {
-      try {
-        const [statsResponse, patientsResponse, activityResponse] = await Promise.all([
-          apiService.getDashboardStats(),
-          apiService.getPatients(),
-          apiService.getRecentActivity(10)
-        ]);
+  const fetchDashboardData = async () => {
+    try {
+      const [statsResult, patientsResult, activityResult] = await Promise.allSettled([
+        apiService.getDashboardStats(),
+        apiService.getPatients(),
+        apiService.getRecentActivity(10)
+      ]);
 
-        if (statsResponse.success) setStats(statsResponse.data!);
-        if (patientsResponse.success) setPatients(patientsResponse.data!);
-        if (activityResponse.success) setRecentActivity(activityResponse.data!);
-      } catch (error) {
-        console.error('Failed to fetch dashboard data:', error);
-      } finally {
-        setLoading(false);
+      if (statsResult.status === 'fulfilled' && statsResult.value.success) {
+        
+        setStats(statsResult.value.data!);
       }
-    };
+      if (patientsResult.status === 'fulfilled' && patientsResult.value.success) {
+        
+        setPatients(patientsResult.value.data!);
+      }
+      if (activityResult.status === 'fulfilled' && activityResult.value.success) {
+        
+        setRecentActivity(activityResult.value.data!);
+      }
+    } catch (error) {
+      
+    } finally {
+      setLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchDashboardData();
 
     // Ensure doctors remain online across refresh while on the dashboard
@@ -64,7 +73,7 @@ const DoctorDashboard: React.FC = () => {
         await apiService.updateOnlineStatus(true);
         updateStatus(true);
       } catch (e) {
-        console.error('Failed to set doctor online on mount', e);
+        
       }
     };
     setActive();
@@ -94,7 +103,7 @@ const DoctorDashboard: React.FC = () => {
       await apiService.updateOnlineStatus(next);
       updateStatus(next);
     } catch (e) {
-      console.error('Failed to update online status', e);
+      
       setIsOnline((prev) => !prev);
     }
   };
@@ -108,219 +117,175 @@ const DoctorDashboard: React.FC = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 animate-in fade-in duration-700">
       {/* Welcome Section */}
-      <div className="bg-white overflow-hidden shadow rounded-lg">
-        <div className="px-4 py-5 sm:p-6">
-          <h1 className="text-2xl font-bold text-gray-900">
-            Welcome back, Dr. {user?.name}!
-          </h1>
-          <p className="mt-1 text-sm text-gray-500">
-            Monitor your patients' progress and provide personalized guidance.
-          </p>
-          <div className="mt-4 flex flex-col items-start">
-            <button
-              onClick={toggleOnline}
-              title={isOnline ? 'Online - click to go offline' : 'Offline - click to go online'}
-              aria-label={isOnline ? 'Online' : 'Offline'}
-              className={`h-4 w-4 rounded-full border transition-colors duration-150 ${
-                isOnline
-                  ? 'bg-green-500 border-green-600 hover:bg-green-600'
-                  : 'bg-red-500 border-red-600 hover:bg-red-600'
-              }`}
-            />
-            <span className={`mt-1 text-xs ${isOnline ? 'text-green-700' : 'text-gray-600'}`}>
-              {isOnline ? 'Active' : 'Inactive'}
-            </span>
+      <div className="glass-card overflow-hidden">
+        <div className="px-6 py-8 sm:p-10">
+          <div className="flex justify-between items-start">
+            <div>
+              <h1 className="text-3xl serene-title mb-2">
+                Welcome back, Dr. {user?.name}!
+              </h1>
+              <p className="serene-subtitle text-lg">
+                Monitor your patients' progress and provide personalized guidance in your digital sanctuary.
+              </p>
+            </div>
+            <div className="flex flex-col items-center">
+              <button
+                onClick={toggleOnline}
+                className={`h-6 w-6 rounded-full border-4 border-white shadow-sm transition-all duration-300 ${
+                  isOnline ? 'bg-green-400 scale-110' : 'bg-rose-400'
+                }`}
+                title={isOnline ? 'Online' : 'Offline'}
+              />
+              <span className="mt-2 text-xs font-bold uppercase tracking-widest text-gray-400">
+                {isOnline ? 'Active' : 'Inactive'}
+              </span>
+            </div>
           </div>
         </div>
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
         <Link
           to="/doctor/patients"
-          className="relative group bg-white p-6 focus-within:ring-2 focus-within:ring-inset focus-within:ring-primary-500 rounded-lg shadow hover:shadow-md transition-shadow"
+          className="glass-card p-8 group hover:bg-white/50 transition-all"
         >
-          <div>
-            <span className="rounded-lg inline-flex p-3 bg-primary-50 text-primary-700 ring-4 ring-white">
-              <Users className="h-6 w-6" />
-            </span>
+          <div className="flex items-center justify-between mb-6">
+            <div className="p-3 rounded-2xl bg-violet-100 text-violet-600">
+              <Users className="h-7 w-7" />
+            </div>
+            <UserPlus className="h-6 w-6 text-gray-300 group-hover:text-violet-400 transition-colors" />
           </div>
-          <div className="mt-8">
-            <h3 className="text-lg font-medium">
-              <span className="absolute inset-0" aria-hidden="true" />
-              Patient Profiles
-            </h3>
-            <p className="mt-2 text-sm text-gray-500">
-              View and manage your patients' profiles and exercise plans.
-            </p>
-          </div>
-          <span
-            className="pointer-events-none absolute top-6 right-6 text-gray-300 group-hover:text-gray-400"
-            aria-hidden="true"
-          >
-            <UserPlus className="h-6 w-6" />
-          </span>
+          <h3 className="text-xl font-bold text-gray-900 mb-2">Patient Profiles</h3>
+          <p className="serene-subtitle">Manage patient plans and monitor clinical updates.</p>
         </Link>
 
         <Link
           to="/doctor/reports"
-          className="relative group bg-white p-6 focus-within:ring-2 focus-within:ring-inset focus-within:ring-primary-500 rounded-lg shadow hover:shadow-md transition-shadow"
+          className="glass-card p-8 group hover:bg-white/50 transition-all"
         >
-          <div>
-            <span className="rounded-lg inline-flex p-3 bg-secondary-50 text-secondary-700 ring-4 ring-white">
-              <FileText className="h-6 w-6" />
-            </span>
+          <div className="flex items-center justify-between mb-6">
+            <div className="p-3 rounded-2xl bg-rose-100 text-rose-600">
+              <FileText className="h-7 w-7" />
+            </div>
+            <BarChart3 className="h-6 w-6 text-gray-300 group-hover:text-rose-400 transition-colors" />
           </div>
-          <div className="mt-8">
-            <h3 className="text-lg font-medium">
-              <span className="absolute inset-0" aria-hidden="true" />
-              Exercise Reports
-            </h3>
-            <p className="mt-2 text-sm text-gray-500">
-              Review detailed reports on patient performance and posture errors.
-            </p>
-          </div>
-          <span
-            className="pointer-events-none absolute top-6 right-6 text-gray-300 group-hover:text-gray-400"
-            aria-hidden="true"
-          >
-            <BarChart3 className="h-6 w-6" />
-          </span>
+          <h3 className="text-xl font-bold text-gray-900 mb-2">Exercise Reports</h3>
+          <p className="serene-subtitle">Review detailed performance and posture analytics.</p>
         </Link>
 
-        <div className="relative group bg-white p-6 focus-within:ring-2 focus-within:ring-inset focus-within:ring-primary-500 rounded-lg shadow hover:shadow-md transition-shadow cursor-pointer">
-          <div>
-            <span className="rounded-lg inline-flex p-3 bg-yellow-50 text-yellow-700 ring-4 ring-white">
-              <BarChart3 className="h-6 w-6" />
-            </span>
+        <Link
+          to="/doctor/analytics"
+          className="glass-card p-8 group hover:bg-white/50 transition-all cursor-pointer"
+        >
+          <div className="flex items-center justify-between mb-6">
+            <div className="p-3 rounded-2xl bg-amber-100 text-amber-600">
+              <BarChart3 className="h-7 w-7" />
+            </div>
+            <TrendingUp className="h-6 w-6 text-gray-300 group-hover:text-amber-400 transition-colors" />
           </div>
-          <div className="mt-8">
-            <h3 className="text-lg font-medium">
-              <span className="absolute inset-0" aria-hidden="true" />
-              Progress Charts
-            </h3>
-            <p className="mt-2 text-sm text-gray-500">
-              Analyze patient progress with comprehensive charts and analytics.
-            </p>
-          </div>
-          <span
-            className="pointer-events-none absolute top-6 right-6 text-gray-300 group-hover:text-gray-400"
-            aria-hidden="true"
-          >
-            <TrendingUp className="h-6 w-6" />
-          </span>
-        </div>
+          <h3 className="text-xl font-bold text-gray-900 mb-2">Progress Charts</h3>
+          <p className="serene-subtitle">Analyze recovery trends with interactive telemetry.</p>
+        </Link>
       </div>
 
       {/* Stats Overview */}
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <Users className="h-6 w-6 text-gray-400" />
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">
-                    Total Patients
-                  </dt>
-                  <dd className="text-lg font-medium text-gray-900">
-                    {patients.length}
-                  </dd>
-                </dl>
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          { id: 'patients', label: 'Total Patients', value: patients.length, icon: Users, color: 'violet' },
+          { id: 'active', label: 'Active Sessions', value: stats?.activeSessions || 0, icon: Activity, color: 'emerald', clickable: true },
+          { id: 'score', label: 'Avg. Patient Score', value: `${stats?.averageScore || 0}%`, icon: Target, color: 'rose' },
+          { id: 'exercises', label: 'Completed Exercises', value: stats?.totalSessions || 0, icon: CheckCircle, color: 'amber', clickable: true, link: '/doctor/reports' }
+        ].map((item, idx) => (
+          <div 
+            key={idx} 
+            onClick={() => {
+              if (item.id === 'active') setShowActiveModal(true);
+              else if (item.link) navigate(item.link);
+            }}
+            className={`glass-card p-6 flex items-center transition-all ${item.clickable ? 'cursor-pointer hover:bg-white/60 active:scale-95' : ''}`}
+          >
+            <div className={`p-4 rounded-2xl bg-${item.color}-50 text-${item.color}-600 mr-5`}>
+              <item.icon className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider">{item.label}</p>
+              <div className="flex items-center gap-2">
+                <p className="serene-stat-value">{item.value}</p>
+                {item.id === 'active' && (stats?.activeSessions || 0) > 0 && (
+                  <span className="flex h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
+                )}
               </div>
             </div>
           </div>
-        </div>
-
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <Activity className="h-6 w-6 text-gray-400" />
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">
-                    Active Sessions
-                  </dt>
-                  <dd className="text-lg font-medium text-gray-900">
-                    {stats?.totalSessions || 0}
-                  </dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <Target className="h-6 w-6 text-gray-400" />
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">
-                    Avg. Patient Score
-                  </dt>
-                  <dd className="text-lg font-medium text-gray-900">
-                    {stats?.averageScore || 0}%
-                  </dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white overflow-hidden shadow rounded-lg">
-          <div className="p-5">
-            <div className="flex items-center">
-              <div className="flex-shrink-0">
-                <CheckCircle className="h-6 w-6 text-gray-400" />
-              </div>
-              <div className="ml-5 w-0 flex-1">
-                <dl>
-                  <dt className="text-sm font-medium text-gray-500 truncate">
-                    Completed Exercises
-                  </dt>
-                  <dd className="text-lg font-medium text-gray-900">
-                    {stats?.totalExercises || 0}
-                  </dd>
-                </dl>
-              </div>
-            </div>
-          </div>
-        </div>
+        ))}
       </div>
 
-      {/* Connection Requests */}
-      <DoctorConnectionRequests />
+      {/* Active Sessions Modal */}
+      {showActiveModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-in fade-in zoom-in duration-300">
+          <div className="absolute inset-0 bg-gray-900/40 backdrop-blur-sm" onClick={() => setShowActiveModal(false)} />
+          <div className="glass-card w-full max-w-md p-8 relative shadow-2xl">
+            <h3 className="text-xl serene-title mb-6">Live Practice Sessions</h3>
+            <div className="space-y-4 max-h-[450px] overflow-y-auto pr-2 custom-scrollbar">
+              {stats?.activeSessionsList && stats.activeSessionsList.length > 0 ? (
+                stats.activeSessionsList.map((session: any, i: number) => (
+                  <div key={i} className="flex items-center justify-between p-4 rounded-2xl bg-gray-50 border border-gray-100">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-violet-100 flex items-center justify-center font-bold text-violet-600">
+                        {session.patientName.charAt(0)}
+                      </div>
+                      <div>
+                        <p className="font-bold text-gray-900">{session.patientName}</p>
+                        <p className="text-xs text-gray-500">{session.exerciseName}</p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <span className="inline-flex items-center px-2 py-1 rounded-lg bg-emerald-50 text-emerald-600 text-[10px] font-bold uppercase animate-pulse">
+                        Live
+                      </span>
+                    </div>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-12 text-gray-400 italic">
+                  No patients are currently performing exercises.
+                </div>
+              )}
+            </div>
+            <button 
+              onClick={() => setShowActiveModal(false)}
+              className="mt-8 w-full py-3 bg-gray-900 text-white rounded-xl font-bold hover:bg-gray-800 transition-colors"
+            >
+              Close Monitor
+            </button>
+          </div>
+        </div>
+      )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Recent Patient Activity */}
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-4 py-5 sm:p-6">
-            <h3 className="text-lg leading-6 font-medium text-gray-900">
+        <div className="glass-card overflow-hidden">
+          <div className="px-6 py-6 sm:p-8">
+            <h3 className="text-xl serene-title mb-6">
               Recent Patient Activity
             </h3>
             <div className="mt-5">
               {recentActivity.length > 0 ? (
                 <div className="flow-root">
-                  <ul className="-my-5 divide-y divide-gray-200">
+                  <ul className="-my-5 divide-y divide-gray-100">
                     {recentActivity.map((activity) => (
-                      <li key={activity.id} className="py-4">
+                      <li key={activity.id} className="py-5 serene-table-row">
                         <div className="flex items-center space-x-4">
                           <div className="flex-shrink-0">
-                            <div className="h-8 w-8 rounded-full bg-primary-100 flex items-center justify-center">
-                              <Activity className="h-4 w-4 text-primary-600" />
+                            <div className="h-10 w-10 rounded-2xl bg-violet-50 flex items-center justify-center">
+                              <Activity className="h-5 w-5 text-violet-600" />
                             </div>
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900 truncate">
+                            <p className="text-sm font-bold text-gray-900 truncate">
                               {activity.user?.name || 'Patient'}
                             </p>
                             <p className="text-sm text-gray-500">
@@ -329,17 +294,17 @@ const DoctorDashboard: React.FC = () => {
                           </div>
                           <div className="flex-shrink-0 text-right">
                             {activity.session?.score && (
-                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                              <span className={`serene-badge ${
                                 activity.session.score >= 80 
-                                  ? 'bg-green-100 text-green-800'
+                                  ? 'badge-active'
                                   : activity.session.score >= 60
-                                  ? 'bg-yellow-100 text-yellow-800'
-                                  : 'bg-red-100 text-red-800'
+                                  ? 'badge-stable'
+                                  : 'badge-risk'
                               }`}>
                                 {activity.session.score}%
                               </span>
                             )}
-                            <p className="text-xs text-gray-500 mt-1">
+                            <p className="text-xs font-semibold text-gray-400 mt-2">
                               {new Date(activity.createdAt).toLocaleDateString()}
                             </p>
                           </div>
@@ -349,10 +314,10 @@ const DoctorDashboard: React.FC = () => {
                   </ul>
                 </div>
               ) : (
-                <div className="text-center py-6">
-                  <Activity className="mx-auto h-12 w-12 text-gray-400" />
-                  <h3 className="mt-2 text-sm font-medium text-gray-900">No recent activity</h3>
-                  <p className="mt-1 text-sm text-gray-500">
+                <div className="text-center py-12">
+                  <Activity className="mx-auto h-16 w-16 text-gray-200" />
+                  <h3 className="mt-4 text-lg font-bold text-gray-900">No recent activity</h3>
+                  <p className="mt-2 text-sm text-gray-500">
                     Patient activity will appear here as they complete exercises.
                   </p>
                 </div>
@@ -362,15 +327,15 @@ const DoctorDashboard: React.FC = () => {
         </div>
 
         {/* Patient List */}
-        <div className="bg-white shadow rounded-lg">
-          <div className="px-4 py-5 sm:p-6">
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg leading-6 font-medium text-gray-900">
+        <div className="glass-card overflow-hidden">
+          <div className="px-6 py-6 sm:p-8">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xl serene-title">
                 Your Patients
               </h3>
               <Link
                 to="/doctor/patients"
-                className="text-sm font-medium text-primary-600 hover:text-primary-500"
+                className="text-sm font-bold text-violet-600 hover:text-violet-500 uppercase tracking-widest"
               >
                 View all
               </Link>
@@ -378,32 +343,32 @@ const DoctorDashboard: React.FC = () => {
             <div className="mt-5">
               {patients.length > 0 ? (
                 <div className="flow-root">
-                  <ul className="-my-5 divide-y divide-gray-200">
+                  <ul className="-my-5 divide-y divide-gray-100">
                     {patients.slice(0, 5).map((patient) => (
-                      <li key={patient.id} className="py-4">
+                      <li key={patient.id} className="py-5 serene-table-row">
                         <div className="flex items-center space-x-4">
                           <div className="flex-shrink-0">
-                            <div className="h-8 w-8 rounded-full bg-gray-200 flex items-center justify-center">
-                              <span className="text-sm font-medium text-gray-600">
+                            <div className="h-10 w-10 rounded-2xl bg-gray-100 flex items-center justify-center border-2 border-white">
+                              <span className="text-sm font-bold text-gray-600">
                                 {patient.name.charAt(0).toUpperCase()}
                               </span>
                             </div>
                           </div>
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-gray-900 truncate">
+                            <p className="text-sm font-bold text-gray-900 truncate">
                               {patient.name}
                             </p>
-                            <p className="text-sm text-gray-500">
+                            <p className="text-xs text-gray-500 font-medium">
                               {patient.email}
                             </p>
                           </div>
                           <div className="flex-shrink-0">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                            <span className={`serene-badge ${
                               patient.status === 'active' 
-                                ? 'bg-green-100 text-green-800'
+                                ? 'badge-active'
                                 : patient.status === 'pending'
-                                ? 'bg-yellow-100 text-yellow-800'
-                                : 'bg-gray-100 text-gray-800'
+                                ? 'badge-pending'
+                                : 'badge-stable'
                             }`}>
                               {patient.status || 'Active'}
                             </span>
@@ -414,10 +379,10 @@ const DoctorDashboard: React.FC = () => {
                   </ul>
                 </div>
               ) : (
-                <div className="text-center py-6">
-                  <Users className="mx-auto h-12 w-12 text-gray-400" />
-                  <h3 className="mt-2 text-sm font-medium text-gray-900">No patients yet</h3>
-                  <p className="mt-1 text-sm text-gray-500">
+                <div className="text-center py-12">
+                  <Users className="mx-auto h-16 w-16 text-gray-200" />
+                  <h3 className="mt-4 text-lg font-bold text-gray-900">No patients yet</h3>
+                  <p className="mt-2 text-sm text-gray-500">
                     Patients will appear here once they register and connect with you.
                   </p>
                 </div>
@@ -427,61 +392,8 @@ const DoctorDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* Alerts and Notifications */}
-      <div className="bg-white shadow rounded-lg">
-        <div className="px-4 py-5 sm:p-6">
-          <div className="flex items-center">
-            <Bell className="h-5 w-5 text-gray-400 mr-2" />
-            <h3 className="text-lg leading-6 font-medium text-gray-900">
-              Alerts & Notifications
-            </h3>
-          </div>
-          <div className="mt-5">
-            <div className="space-y-3">
-              {patients.filter(p => p.averageScore && p.averageScore < 60).slice(0, 2).map((patient) => (
-                <div key={patient.id} className="flex items-center p-3 bg-yellow-50 border border-yellow-200 rounded-md">
-                  <AlertTriangle className="h-5 w-5 text-yellow-600 mr-3" />
-                  <div>
-                    <p className="text-sm font-medium text-yellow-800">
-                      {patient.name} needs attention
-                    </p>
-                    <p className="text-xs text-yellow-600">
-                      Low exercise scores (avg: {patient.averageScore}%)
-                    </p>
-                  </div>
-                </div>
-              ))}
-              
-              {patients.filter(p => p.averageScore && p.averageScore > 85).slice(0, 1).map((patient) => (
-                <div key={patient.id} className="flex items-center p-3 bg-blue-50 border border-blue-200 rounded-md">
-                  <CheckCircle className="h-5 w-5 text-blue-600 mr-3" />
-                  <div>
-                    <p className="text-sm font-medium text-blue-800">
-                      {patient.name} is doing great!
-                    </p>
-                    <p className="text-xs text-blue-600">
-                      Excellent progress (avg: {patient.averageScore}%)
-                    </p>
-                  </div>
-                </div>
-              ))}
-              
-              {patients.filter(p => !p.averageScore || (p.averageScore >= 60 && p.averageScore <= 85)).length === 0 && 
-               patients.filter(p => p.averageScore && p.averageScore < 60).length === 0 &&
-               patients.filter(p => p.averageScore && p.averageScore > 85).length === 0 && (
-                <div className="text-center py-4">
-                  <p className="text-sm text-gray-500">No alerts at this time</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Notifications */}
       <NotificationsSection onOpenChat={handleOpenChat} />
 
-      {/* Chat Widget */}
       <ChatWidget ref={chatWidgetRef} />
     </div>
   );

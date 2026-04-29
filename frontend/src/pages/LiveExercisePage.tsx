@@ -65,7 +65,7 @@ const LiveExercisePage: React.FC = () => {
             setError('Failed to load exercise details: ' + (response.message || 'Unknown error'));
           }
         } catch (error) {
-          console.error('Failed to fetch exercise:', error);
+          
           setError('Failed to load exercise details: ' + (error instanceof Error ? error.message : 'Unknown error'));
         }
       } else if (exerciseId === 'new' || !exerciseId) {
@@ -154,7 +154,7 @@ const LiveExercisePage: React.FC = () => {
         determineCurrentPosture(landmarks);
       }
     } catch (error) {
-      console.error('Error analyzing pose:', error);
+      
     }
   }, [session, determineCurrentPosture]);
   
@@ -171,32 +171,32 @@ const LiveExercisePage: React.FC = () => {
 
   const initializeMediaPipe = useCallback(() => {
     if (!videoRef.current || !canvasRef.current) {
-      console.log('MediaPipe initialization skipped: missing video or canvas ref');
+      
       return;
     }
 
     // Clean up any existing MediaPipe resources first
     if (poseRef.current) {
-      console.log('Cleaning up existing MediaPipe pose...');
+      
       try {
         poseRef.current.close();
       } catch (error) {
-        console.warn('Error closing existing pose:', error);
+        
       }
       poseRef.current = null;
     }
     
     if (cameraRef.current) {
-      console.log('Cleaning up existing MediaPipe camera...');
+      
       try {
         cameraRef.current.stop();
       } catch (error) {
-        console.warn('Error stopping existing camera:', error);
+        
       }
       cameraRef.current = null;
     }
 
-    console.log('Initializing MediaPipe Pose...');
+    
 
     try {
       const pose = new Pose({
@@ -258,10 +258,6 @@ const LiveExercisePage: React.FC = () => {
       // Wait for video to be ready before starting MediaPipe camera
       const startMediaPipeCamera = () => {
         if (videoRef.current && videoRef.current.readyState >= 2) {
-          console.log('Starting MediaPipe camera with video dimensions:', {
-            width: videoRef.current.videoWidth,
-            height: videoRef.current.videoHeight
-          });
 
           try {
             const camera = new MediaPipeCamera(videoRef.current, {
@@ -270,7 +266,7 @@ const LiveExercisePage: React.FC = () => {
                   try {
                     await pose.send({ image: videoRef.current });
                   } catch (error) {
-                    console.warn('Error sending frame to MediaPipe:', error);
+                    
                   }
                 }
               },
@@ -281,19 +277,19 @@ const LiveExercisePage: React.FC = () => {
             poseRef.current = pose;
             cameraRef.current = camera;
             camera.start();
-            console.log('MediaPipe camera started successfully');
+            
           } catch (error) {
-            console.error('Error starting MediaPipe camera:', error);
+            
           }
         } else {
-          console.log('Video not ready, retrying MediaPipe camera initialization...');
+          
           setTimeout(startMediaPipeCamera, 100);
         }
       };
 
       startMediaPipeCamera();
     } catch (error) {
-      console.error('Error initializing MediaPipe:', error);
+      
     }
   }, []); // Dependencies removed to keep it stable
 
@@ -303,13 +299,13 @@ const LiveExercisePage: React.FC = () => {
       // Wait for video to be ready before initializing MediaPipe
       const checkVideoReady = () => {
         if (videoRef.current && videoRef.current.readyState >= 2) {
-          console.log('Video is ready, initializing MediaPipe...');
+          
           // Add a small delay to ensure video is fully loaded
           setTimeout(() => {
             initializeMediaPipe();
           }, 500);
         } else {
-          console.log('Video not ready yet, waiting...');
+          
           setTimeout(checkVideoReady, 200);
         }
       };
@@ -318,12 +314,12 @@ const LiveExercisePage: React.FC = () => {
     }
 
     return () => {
-      console.log('Cleaning up MediaPipe resources...');
+      
       if (poseRef.current) {
         try {
           poseRef.current.close();
         } catch (error) {
-          console.warn('Error closing pose during cleanup:', error);
+          
         }
         poseRef.current = null;
       }
@@ -331,7 +327,7 @@ const LiveExercisePage: React.FC = () => {
         try {
           cameraRef.current.stop();
         } catch (error) {
-          console.warn('Error stopping camera during cleanup:', error);
+          
         }
         cameraRef.current = null;
       }
@@ -340,7 +336,7 @@ const LiveExercisePage: React.FC = () => {
 
   const startCamera = async () => {
     try {
-      console.log('Requesting camera access...');
+      
       
       const stream = await navigator.mediaDevices.getUserMedia({
         video: {
@@ -370,7 +366,7 @@ const LiveExercisePage: React.FC = () => {
               }
             }, 100);
           }).catch((playError) => {
-            console.error('Failed to play video:', playError);
+            
             setError('Failed to start video playback');
           });
         };
@@ -379,7 +375,7 @@ const LiveExercisePage: React.FC = () => {
         (video as any)._cameraCleanup = () => video.removeEventListener('loadedmetadata', handleLoadedMetadata);
       }
     } catch (error) {
-      console.error('Error accessing camera:', error);
+      
       setError('Failed to access camera. Please ensure permissions are granted.');
     }
   };
@@ -443,7 +439,7 @@ const LiveExercisePage: React.FC = () => {
       stopCamera();
       navigate('/patient/dashboard');
     } catch (error) {
-      console.error('Failed to end session:', error);
+      
       setError('Failed to end session');
     }
   }, [session, stopCamera, navigate, accuracy, repCount, feedback?.message]);
@@ -474,7 +470,7 @@ const LiveExercisePage: React.FC = () => {
         setError('Failed to start session');
       }
     } catch (error) {
-      console.error('Failed to start session:', error);
+      
       setError('Failed to start exercise session');
     }
   };

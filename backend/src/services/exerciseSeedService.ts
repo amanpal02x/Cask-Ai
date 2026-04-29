@@ -5,7 +5,7 @@ export class ExerciseSeedService {
   static async seedExercises() {
     try {
       // Clear existing exercises to ensure the 6 requested ones are present and consistent
-      console.log('Clearing existing exercises and re-seeding...');
+      
       await Exercise.deleteMany({});
 
       const sampleExercises = [
@@ -219,9 +219,9 @@ export class ExerciseSeedService {
       ];
 
       await Exercise.insertMany(sampleExercises);
-      console.log(`Successfully seeded ${sampleExercises.length} exercises`);
+      
     } catch (error) {
-      console.error('Error seeding exercises:', error);
+      
       throw error;
     }
   }

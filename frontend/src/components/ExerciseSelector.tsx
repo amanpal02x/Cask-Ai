@@ -40,7 +40,7 @@ const ExerciseSelector: React.FC<ExerciseSelectorProps> = ({
         setExercises(response.data);
       }
     } catch (error) {
-      console.error('Failed to fetch exercises:', error);
+      
     } finally {
       setLoading(false);
     }

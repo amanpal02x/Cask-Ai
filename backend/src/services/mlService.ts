@@ -49,10 +49,10 @@ export const analyzePose = async (landmarks: any[], exerciseName: string = "squa
     
     return res.data;
   } catch (err) {
-    console.log("ML backend not available, using mock analysis");
+    
     
     // Mock analysis for development/testing
-    return mockPoseAnalysis(landmarks, exerciseName);
+    return mockPoseAnalysis(landmarks, exerciseName, sessionId);
   }
 };
 
@@ -71,51 +71,97 @@ export const processSessionVideo = async (sessionId: string, videoUrl: string, e
     
     return res.data;
   } catch (err) {
-    console.error("Error calling ML backend for video processing:", err);
+    
     return { success: false, error: "ML Backend unavailable" };
   }
 };
 
+const sessionStates: Record<string, { repCount: number, stage: string }> = {};
+
+const calculateAngle = (a: any, b: any, c: any) => {
+  const getPoint = (p: any) => {
+    if (Array.isArray(p)) return { x: p[0], y: p[1] };
+    return p;
+  };
+  const p1 = getPoint(a);
+  const p2 = getPoint(b);
+  const p3 = getPoint(c);
+  
+  const radians = Math.atan2(p3.y - p2.y, p3.x - p2.x) - Math.atan2(p1.y - p2.y, p1.x - p2.x);
+  let angle = Math.abs(radians * 180.0 / Math.PI);
+  if (angle > 180.0) angle = 360 - angle;
+  return angle;
+};
+
 // Mock pose analysis function for development
-// Updated to return fields consistent with the real ML engine
-const mockPoseAnalysis = (landmarks: any, exerciseName: string) => {
-  // Simple mock analysis based on landmark positions
+const mockPoseAnalysis = (landmarks: any, exerciseName: string, sessionId: string) => {
+  const name = exerciseName.toLowerCase();
+  
+  if (!sessionStates[sessionId]) {
+    sessionStates[sessionId] = { repCount: 0, stage: 'up' };
+  }
+  const state = sessionStates[sessionId];
+
+  let accuracy = 85;
+  let feedback = ["Good posture!"];
+  let angles: any = {};
+
+  // Basic rep counting logic for common exercises
+  try {
+    if (name.includes('squat')) {
+      const hip = landmarks[23];
+      const knee = landmarks[25];
+      const ankle = landmarks[27];
+      if (hip && knee && ankle) {
+        const angle = calculateAngle(hip, knee, ankle);
+        angles.knee = Math.round(angle);
+        if (angle < 120) state.stage = 'down';
+        else if (angle > 160 && state.stage === 'down') {
+          state.repCount++;
+          state.stage = 'up';
+        }
+        if (state.stage === 'down' && angle > 130) feedback.push("Go lower!");
+      }
+    } else if (name.includes('push') || name.includes('push-up')) {
+      const shoulder = landmarks[11];
+      const elbow = landmarks[13];
+      const wrist = landmarks[15];
+      if (shoulder && elbow && wrist) {
+        const angle = calculateAngle(shoulder, elbow, wrist);
+        angles.elbow = Math.round(angle);
+        if (angle < 100) state.stage = 'down';
+        else if (angle > 150 && state.stage === 'down') {
+          state.repCount++;
+          state.stage = 'up';
+        }
+      }
+    }
+  } catch (e) {
+    // Ignore calculation errors
+  }
+
+  // Visual checks
   const leftShoulder = landmarks[11];
   const rightShoulder = landmarks[12];
   const leftHip = landmarks[23];
   const rightHip = landmarks[24];
-  const leftKnee = landmarks[25];
-  const rightKnee = landmarks[26];
-
-  let accuracy = 85; // Base accuracy
-  let feedback = ["Good posture!"];
-  let angles = {};
 
   if (leftShoulder && rightShoulder && leftHip && rightHip) {
-    // Check shoulder alignment
     const sDiff = Array.isArray(leftShoulder) ? Math.abs(leftShoulder[1] - rightShoulder[1]) : Math.abs(leftShoulder.y - rightShoulder.y);
     if (sDiff > 0.1) {
       accuracy -= 15;
       feedback.push("Keep your shoulders level");
     }
-
-    // Check hip alignment
-    const hDiff = Array.isArray(leftHip) ? Math.abs(leftHip[1] - rightHip[1]) : Math.abs(leftHip.y - rightHip.y);
-    if (hDiff > 0.1) {
-      accuracy -= 10;
-      feedback.push("Keep your hips level");
-    }
   }
 
-  // Randomly determine if this is a complete rep (for demo purposes)
   const isCorrectForm = accuracy > 75;
 
   return {
-    exercise: exerciseName.toLowerCase(),
+    exercise: name,
     accuracy: Math.max(60, Math.min(95, accuracy)),
     feedback: feedback,
     angles: angles,
-    repCount: Math.floor(Math.random() * 5), // Mock rep count
+    repCount: state.repCount,
     isCorrectForm: isCorrectForm,
     confidence: accuracy / 100
   };

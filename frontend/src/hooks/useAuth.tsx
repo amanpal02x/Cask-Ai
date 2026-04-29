@@ -44,7 +44,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             setUser(response.data);
           }
         } catch (error) {
-          console.error('Failed to get current user:', error);
+          
           localStorage.removeItem('authToken');
         }
       }
@@ -64,7 +64,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       return false;
     } catch (error) {
-      console.error('Login failed:', error);
+      
       return false;
     }
   };
@@ -79,7 +79,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       }
       return false;
     } catch (error) {
-      console.error('Registration failed:', error);
+      
       return false;
     }
   };
@@ -97,7 +97,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       await apiService.updateOnlineStatus(false);
     } catch (e) {
       // non-blocking
-      console.error('Failed to update online status on logout:', e);
+      
     } finally {
       apiService.logout();
       setUser(null);

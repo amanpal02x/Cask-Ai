@@ -320,7 +320,16 @@ export class SessionService {
   ): Promise<IExerciseSessionType[]> {
     const { limit = 10, offset = 0, patientId, exerciseId } = options;
 
-    const query: any = { doctorId: new Types.ObjectId(doctorId) };
+    const patientRelations = await PatientDoctor.find({ doctorId: new Types.ObjectId(doctorId), status: 'active' }).select('patientId');
+    const patientIds = patientRelations.map(r => r.patientId);
+
+    const query: any = {
+      $or: [
+        { doctorId: new Types.ObjectId(doctorId) },
+        { patientId: { $in: patientIds }, doctorId: { $exists: false } },
+        { patientId: { $in: patientIds }, doctorId: null }
+      ]
+    };
     
     if (patientId && Types.ObjectId.isValid(patientId)) {
       query.patientId = new Types.ObjectId(patientId);
@@ -340,7 +349,9 @@ export class SessionService {
     return sessions.map(session => ({
       id: (session._id as Types.ObjectId).toString(),
       exerciseId: session.exerciseId._id.toString(),
+      exerciseName: session.exerciseId.name || 'Unknown Exercise',
       userId: session.patientId._id.toString(),
+      patientName: session.patientId.name || 'Unknown Patient',
       doctorId: session.doctorId?.toString(),
       startTime: session.startTime.toISOString(),
       endTime: session.endTime?.toISOString(),

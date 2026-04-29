@@ -2,7 +2,8 @@ import React, { useCallback, useEffect, useMemo, useRef, useState, forwardRef, u
 import { useAuth } from '../hooks/useAuth';
 import { useWebSocket } from '../hooks/useWebSocket';
 import apiService from '../services/api';
-import { Paperclip, Send, MessageSquare, X } from 'lucide-react';
+import { Paperclip, Send, MessageSquare, X, Circle, User, Sparkles } from 'lucide-react';
+import '../SereneWellness.css';
 
 interface MessageItem {
   _id?: string;
@@ -37,6 +38,29 @@ const ChatWidget = forwardRef<ChatWidgetRef, ChatWidgetProps>((props, ref) => {
   const [pendingMessages, setPendingMessages] = useState<Set<string>>(new Set());
   const listRef = useRef<HTMLDivElement | null>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const widgetRef = useRef<HTMLDivElement>(null);
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  // Close on click outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      const target = event.target as Node;
+      if (
+        isOpen && 
+        widgetRef.current && 
+        !widgetRef.current.contains(target) &&
+        buttonRef.current &&
+        !buttonRef.current.contains(target)
+      ) {
+        setIsOpen(false);
+      }
+    };
+
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen]);
 
   const { 
     isConnected, 
@@ -60,37 +84,38 @@ const ChatWidget = forwardRef<ChatWidgetRef, ChatWidgetProps>((props, ref) => {
     }
   }));
 
-  // Load relationships for each role
+  // Load relationships
   useEffect(() => {
     const load = async () => {
       if (!user) return;
-      if (user.role === 'patient') {
-        const res = await apiService.getPatientConnectionStatus();
-        if (res.success && res.data?.relationshipId) {
-          setActiveRelationshipId(res.data.relationshipId);
-          joinRelationship(res.data.relationshipId);
-          // Load chat history
-          loadChatHistory(res.data.relationshipId);
-        }
-      } else if (user.role === 'doctor') {
-        const res = await apiService.getPatients();
-        if (res.success) {
-          setDoctorPatients(res.data || []);
-          // Auto-select first thread if none
-          const first = (res.data || []).find(p => p.relationshipId);
-          if (!activeRelationshipId && first?.relationshipId) {
-            setActiveRelationshipId(first.relationshipId);
-            joinRelationship(first.relationshipId);
-            // Load chat history
-            loadChatHistory(first.relationshipId);
+      try {
+        if (user.role === 'patient') {
+          const res = await apiService.getPatientConnectionStatus();
+          if (res.success && res.data?.relationshipId) {
+            setActiveRelationshipId(res.data.relationshipId);
+            joinRelationship(res.data.relationshipId);
+            loadChatHistory(res.data.relationshipId);
+          }
+        } else if (user.role === 'doctor') {
+          const res = await apiService.getPatients();
+          if (res.success) {
+            setDoctorPatients(res.data || []);
+            const first = (res.data || []).find(p => p.relationshipId);
+            if (!activeRelationshipId && first?.relationshipId) {
+              setActiveRelationshipId(first.relationshipId);
+              joinRelationship(first.relationshipId);
+              loadChatHistory(first.relationshipId);
+            }
           }
         }
+      } catch (e) {
+        
       }
     };
     load();
   }, [user, joinRelationship, activeRelationshipId, loadChatHistory]);
 
-  // Handle incoming messages
+  // Event Listeners for WebSocket
   useEffect(() => {
     const messageHandler = (evt: Event) => {
       const e = evt as CustomEvent;
@@ -99,17 +124,13 @@ const ChatWidget = forwardRef<ChatWidgetRef, ChatWidgetProps>((props, ref) => {
       
       setThreads(prev => {
         const list = prev[msg.relationshipId] || [];
-        // Check if message already exists (prevent duplicates)
         const exists = list.some(m => 
-          m.clientMessageId === msg.clientMessageId || 
-          (m._id && m._id === msg._id)
+          m.clientMessageId === msg.clientMessageId || (m._id && m._id === msg._id)
         );
         if (exists) return prev;
-        
         return { ...prev, [msg.relationshipId]: list.concat(msg) };
       });
       
-      // Remove from pending if it was a pending message
       if (msg.clientMessageId) {
         setPendingMessages(prev => {
           const newSet = new Set(prev);
@@ -118,12 +139,11 @@ const ChatWidget = forwardRef<ChatWidgetRef, ChatWidgetProps>((props, ref) => {
         });
       }
       
-      // Auto-open when a new message arrives for this user
-      if (!isOpen) setIsOpen(true);
-      // Scroll to bottom
+      if (!isOpen && msg.senderId !== user?.id) setIsOpen(true);
+      
       setTimeout(() => {
         if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
-      }, 0);
+      }, 100);
     };
 
     const chatHistoryHandler = (evt: Event) => {
@@ -131,67 +151,40 @@ const ChatWidget = forwardRef<ChatWidgetRef, ChatWidgetProps>((props, ref) => {
       const { relationshipId, messages } = e.detail;
       if (!relationshipId || !messages) return;
       
-      setThreads(prev => ({
-        ...prev,
-        [relationshipId]: messages
-      }));
+      setThreads(prev => ({ ...prev, [relationshipId]: messages }));
       
-      // Scroll to bottom after loading history
       setTimeout(() => {
         if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
-      }, 0);
+      }, 100);
     };
 
     const typingHandler = (evt: Event) => {
       const e = evt as CustomEvent;
-      const { relationshipId, senderId, isTyping } = e.detail;
+      const { relationshipId, senderId, isTyping: userIsTyping } = e.detail;
       if (!relationshipId || !senderId || senderId === user?.id) return;
       
       setTypingUsers(prev => {
         const current = prev[relationshipId] || [];
-        if (isTyping) {
-          return {
-            ...prev,
-            [relationshipId]: current.filter(id => id !== senderId).concat(senderId)
-          };
+        if (userIsTyping) {
+          return { ...prev, [relationshipId]: Array.from(new Set([...current, senderId])) };
         } else {
-          return {
-            ...prev,
-            [relationshipId]: current.filter(id => id !== senderId)
-          };
+          return { ...prev, [relationshipId]: current.filter(id => id !== senderId) };
         }
-      });
-    };
-
-    const readReceiptHandler = (evt: Event) => {
-      const e = evt as CustomEvent;
-      const { relationshipId, messageIds } = e.detail;
-      if (!relationshipId || !messageIds) return;
-      
-      setThreads(prev => {
-        const list = prev[relationshipId] || [];
-        const updated = list.map(msg => 
-          messageIds.includes(msg._id || '') ? { ...msg, isRead: true, readAt: new Date() } : msg
-        );
-        return { ...prev, [relationshipId]: updated };
       });
     };
 
     window.addEventListener('websocket-message', messageHandler as EventListener);
     window.addEventListener('websocket-chat-history', chatHistoryHandler as EventListener);
     window.addEventListener('websocket-typing', typingHandler as EventListener);
-    window.addEventListener('websocket-messages-read', readReceiptHandler as EventListener);
     
     return () => {
       window.removeEventListener('websocket-message', messageHandler as EventListener);
       window.removeEventListener('websocket-chat-history', chatHistoryHandler as EventListener);
       window.removeEventListener('websocket-typing', typingHandler as EventListener);
-      window.removeEventListener('websocket-messages-read', readReceiptHandler as EventListener);
     };
   }, [isOpen, user?.id]);
 
   const currentThread = useMemo(() => (activeRelationshipId ? threads[activeRelationshipId] || [] : []), [threads, activeRelationshipId]);
-
   const canSend = isConnected && activeRelationshipId && composeText.trim().length > 0;
 
   const handleSend = useCallback(() => {
@@ -199,14 +192,8 @@ const ChatWidget = forwardRef<ChatWidgetRef, ChatWidgetProps>((props, ref) => {
     const text = composeText.trim();
     const clientMessageId = `${Date.now()}-${Math.random().toString(36).slice(2)}`;
     
-    // Add to pending messages to show loading state
-    setPendingMessages(prev => {
-      const newSet = new Set(prev);
-      newSet.add(clientMessageId);
-      return newSet;
-    });
+    setPendingMessages(prev => new Set(prev).add(clientMessageId));
     
-    // Create temporary message for immediate UI feedback
     const temp: MessageItem = {
       relationshipId: activeRelationshipId,
       senderId: user.id,
@@ -223,7 +210,6 @@ const ChatWidget = forwardRef<ChatWidgetRef, ChatWidgetProps>((props, ref) => {
     }));
     setComposeText('');
     
-    // Stop typing indicator
     if (isTyping) {
       sendTypingIndicator(activeRelationshipId, false);
       setIsTyping(false);
@@ -232,26 +218,18 @@ const ChatWidget = forwardRef<ChatWidgetRef, ChatWidgetProps>((props, ref) => {
     sendMessage('relationship_send', {
       relationshipId: activeRelationshipId,
       senderId: user.id,
-      // recipientId is resolved server-side via room membership
       recipientId: '',
       text,
       clientMessageId
     });
+
+    setTimeout(() => {
+      if (listRef.current) listRef.current.scrollTop = listRef.current.scrollHeight;
+    }, 100);
   }, [user, activeRelationshipId, composeText, sendMessage, sendTypingIndicator, isTyping]);
 
-  // Doctor: switch threads
-  const handlePickPatient = (relationshipId?: string) => {
-    if (!relationshipId) return;
-    setActiveRelationshipId(relationshipId);
-    joinRelationship(relationshipId);
-    // Load chat history for the new relationship
-    loadChatHistory(relationshipId);
-  };
-
-  // Handle typing indicator
   const handleTyping = useCallback((text: string) => {
     if (!activeRelationshipId) return;
-    
     const isCurrentlyTyping = text.trim().length > 0;
     
     if (isCurrentlyTyping && !isTyping) {
@@ -262,183 +240,200 @@ const ChatWidget = forwardRef<ChatWidgetRef, ChatWidgetProps>((props, ref) => {
       sendTypingIndicator(activeRelationshipId, false);
     }
     
-    // Clear existing timeout
-    if (typingTimeoutRef.current) {
-      clearTimeout(typingTimeoutRef.current);
-    }
-    
-    // Set timeout to stop typing indicator
+    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
     if (isCurrentlyTyping) {
       typingTimeoutRef.current = setTimeout(() => {
         setIsTyping(false);
         sendTypingIndicator(activeRelationshipId, false);
-      }, 2000);
+      }, 3000);
     }
   }, [activeRelationshipId, isTyping, sendTypingIndicator]);
 
-  // Mark messages as read when chat is opened or scrolled to bottom
   useEffect(() => {
     if (!activeRelationshipId || !isOpen) return;
-    
-    const unreadMessages = currentThread.filter(msg => 
-      msg.recipientId === user?.id && !msg.isRead && msg._id
-    );
-    
-    if (unreadMessages.length > 0) {
-      const messageIds = unreadMessages.map(msg => msg._id!);
-      markMessagesAsRead(activeRelationshipId, messageIds);
+    const unread = currentThread.filter(msg => msg.recipientId === user?.id && !msg.isRead && msg._id);
+    if (unread.length > 0) {
+      markMessagesAsRead(activeRelationshipId, unread.map(m => m._id!));
     }
   }, [activeRelationshipId, isOpen, currentThread, user?.id, markMessagesAsRead]);
-
-  // Cleanup typing timeout on unmount
-  useEffect(() => {
-    return () => {
-      if (typingTimeoutRef.current) {
-        clearTimeout(typingTimeoutRef.current);
-      }
-    };
-  }, []);
-
-  // Handle clicking outside to close chat
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (isOpen) {
-        const target = event.target as Element;
-        const chatWidget = target.closest('[data-chat-widget]');
-        const chatButton = target.closest('[data-chat-button]');
-        
-        // Close chat if clicking outside both the chat widget and the chat button
-        if (!chatWidget && !chatButton) {
-          setIsOpen(false);
-        }
-      }
-    };
-
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isOpen]);
 
   return (
     <>
       <button
+        ref={buttonRef}
         onClick={() => setIsOpen(s => !s)}
-        className="fixed bottom-6 right-6 z-40 rounded-full shadow-lg bg-primary-600 text-white h-12 w-12 flex items-center justify-center hover:bg-primary-700"
+        className={`fixed bottom-6 right-6 z-50 rounded-2xl shadow-xl transition-all duration-500 flex items-center justify-center group ${
+          isOpen ? 'bg-rose-500 rotate-90 w-12 h-12' : 'bg-violet-600 hover:bg-violet-700 w-14 h-14'
+        }`}
         title="Chat"
         data-chat-button
       >
-        {isOpen ? <X className="h-5 w-5" /> : <MessageSquare className="h-5 w-5" />}
+        {isOpen ? (
+          <X className="h-6 w-6 text-white" />
+        ) : (
+          <div className="relative">
+            <MessageSquare className="h-6 w-6 text-white group-hover:scale-110 transition-transform" />
+            {!isOpen && isConnected && (
+              <span className="absolute -top-1 -right-1 h-3 w-3 bg-emerald-400 border-2 border-violet-600 rounded-full" />
+            )}
+          </div>
+        )}
       </button>
-
+ 
       {isOpen && (
         <div 
-          className="fixed bottom-24 right-6 z-40 w-96 max-w-[96vw] bg-white shadow-2xl rounded-xl border border-gray-100 overflow-hidden"
+          ref={widgetRef}
+          className="fixed bottom-24 right-6 z-50 w-[400px] max-w-[92vw] h-[550px] max-h-[80vh] flex flex-col bg-white/80 backdrop-blur-xl border border-white/60 shadow-[0_20px_50px_rgba(0,0,0,0.15)] rounded-3xl overflow-hidden animate-in slide-in-from-bottom-4 duration-500"
           onClick={(e) => e.stopPropagation()}
           data-chat-widget
         >
-          <div className="flex items-center justify-between px-4 py-3 border-b bg-gray-50">
-            <div className="font-semibold text-gray-800">{user?.role === 'doctor' ? 'Patient Messages' : 'Doctor Messages'}</div>
-            <div className="text-xs text-gray-500">{isConnected ? 'Online' : 'Connecting…'}</div>
+          {/* Header */}
+          <div className="px-6 py-4 bg-gradient-to-r from-violet-600/5 to-rose-600/5 border-b border-white/60 flex items-center justify-between">
+            <div className="flex items-center">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-indigo-600 flex items-center justify-center text-white shadow-sm mr-3">
+                <Sparkles className="h-5 w-5" />
+              </div>
+              <div>
+                <h3 className="text-sm font-bold text-gray-900 leading-none">
+                  {user?.role === 'doctor' ? 'Patient Console' : 'Clinical Support'}
+                </h3>
+                <div className="flex items-center mt-1.5">
+                  <div className={`h-1.5 w-1.5 rounded-full mr-2 ${isConnected ? 'bg-emerald-500 animate-pulse' : 'bg-amber-400'}`} />
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                    {isConnected ? 'Connection Active' : 'Establishing...'}
+                  </span>
+                </div>
+              </div>
+            </div>
+            <button 
+              onClick={() => setIsOpen(false)}
+              className="p-2 rounded-xl hover:bg-gray-100/50 text-gray-400 transition-colors"
+            >
+              <X className="h-4 w-4" />
+            </button>
           </div>
 
-          <div className="flex">
-            {user?.role === 'doctor' && (
-              <div className="w-40 border-r max-h-96 overflow-y-auto">
+          <div className="flex flex-1 overflow-hidden">
+            {/* Thread List (Doctor only) */}
+            {user?.role === 'doctor' && doctorPatients.length > 0 && (
+              <div className="w-24 sm:w-32 border-r border-white/60 bg-gray-50/30 overflow-y-auto py-2">
                 {doctorPatients.map(p => (
                   <button
                     key={p.id}
-                    onClick={() => handlePickPatient(p.relationshipId)}
-                    disabled={!p.relationshipId}
-                    className={`w-full text-left px-3 py-2 text-sm border-b hover:bg-gray-50 ${
-                      activeRelationshipId === p.relationshipId ? 'bg-primary-50 text-primary-700' : 'text-gray-700'
-                    } ${!p.relationshipId ? 'opacity-50 cursor-not-allowed' : ''}`}
+                    onClick={() => p.relationshipId && setActiveRelationshipId(p.relationshipId)}
+                    className={`w-full px-3 py-4 text-left transition-all ${
+                      activeRelationshipId === p.relationshipId 
+                        ? 'bg-white border-y border-white/80 shadow-sm' 
+                        : 'hover:bg-white/40 opacity-60'
+                    }`}
                   >
-                    {p.name}
+                    <div className="flex flex-col items-center sm:items-start text-center sm:text-left">
+                      <div className="w-8 h-8 rounded-lg bg-gray-200 mb-2 flex items-center justify-center text-[10px] font-bold">
+                        {p.name.charAt(0)}
+                      </div>
+                      <span className="text-[10px] font-bold text-gray-700 truncate w-full">{p.name.split(' ')[0]}</span>
+                    </div>
                   </button>
                 ))}
               </div>
             )}
 
-            <div className="flex-1 flex flex-col">
-              <div ref={listRef} className="max-h-96 overflow-y-auto p-3 space-y-2 bg-white">
-                {currentThread.map((m, idx) => {
-                  const mine = m.senderId === user?.id;
-                  const isPending = pendingMessages.has(m.clientMessageId || '');
-                  return (
-                    <div key={m._id || m.clientMessageId || m.timestamp || idx} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
-                      <div className={`px-3 py-2 rounded-lg text-sm shadow-sm ${mine ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-800'} ${isPending ? 'opacity-70' : ''}`}>
-                        <div>{m.text}</div>
-                        <div className={`mt-1 text-[10px] flex items-center gap-1 ${mine ? 'text-primary-100' : 'text-gray-500'}`}>
-                          <span>{new Date(m.timestamp).toLocaleTimeString()}</span>
-                          {mine && (
-                            <span className="flex items-center">
-                              {isPending ? (
-                                <span className="text-xs">Sending...</span>
-                              ) : m.isRead ? (
-                                <span className="text-xs">✓✓</span>
-                              ) : (
-                                <span className="text-xs">✓</span>
-                              )}
-                            </span>
-                          )}
+            {/* Chat Body */}
+            <div className="flex-1 flex flex-col bg-white/40">
+              <div ref={listRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+                {currentThread.length > 0 ? (
+                  currentThread.map((m, idx) => {
+                    const mine = m.senderId === user?.id;
+                    const isPending = pendingMessages.has(m.clientMessageId || '');
+                    return (
+                      <div key={m._id || m.clientMessageId || idx} className={`flex ${mine ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`max-w-[85%] group`}>
+                          <div className={`px-4 py-2.5 rounded-2xl text-sm shadow-sm transition-all duration-300 ${
+                            mine 
+                              ? 'bg-violet-600 text-white rounded-tr-none' 
+                              : 'bg-white text-gray-800 rounded-tl-none border border-gray-100'
+                          } ${isPending ? 'opacity-60 scale-95' : ''}`}>
+                            {m.text}
+                          </div>
+                          <div className={`mt-1 flex items-center gap-2 px-1 text-[9px] font-bold uppercase tracking-wider ${mine ? 'justify-end text-gray-400' : 'text-gray-400'}`}>
+                            <span>{new Date(m.timestamp || (m as any).createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                            {mine && (
+                              <span className="flex items-center">
+                                {isPending ? '···' : m.isRead ? 'Seen' : 'Sent'}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
+                    );
+                  })
+                ) : (
+                  <div className="h-full flex flex-col items-center justify-center text-center opacity-40 px-8">
+                    <div className="p-4 rounded-full bg-gray-100 mb-4">
+                      <MessageSquare className="h-8 w-8 text-gray-400" />
                     </div>
-                  );
-                })}
+                    <p className="text-xs font-bold uppercase tracking-widest text-gray-500">
+                      Private Secure Line
+                    </p>
+                    <p className="text-[10px] text-gray-400 mt-2">
+                      Messages are encrypted and visible only to you and your clinical partner.
+                    </p>
+                  </div>
+                )}
                 
                 {/* Typing indicator */}
-                {activeRelationshipId && typingUsers[activeRelationshipId] && typingUsers[activeRelationshipId].length > 0 && (
-                  <div className="flex justify-start">
-                    <div className="px-3 py-2 rounded-lg text-sm bg-gray-100 text-gray-600">
-                      <div className="flex items-center gap-1">
-                        <span>Someone is typing</span>
-                        <div className="flex gap-1">
-                          <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce"></div>
-                          <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                          <div className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                        </div>
+                {activeRelationshipId && typingUsers[activeRelationshipId]?.length > 0 && (
+                  <div className="flex justify-start animate-in fade-in slide-in-from-left-2">
+                    <div className="px-4 py-2 rounded-2xl bg-gray-100/50 text-gray-500 flex items-center gap-2">
+                      <div className="flex gap-1">
+                        <div className="w-1 h-1 bg-violet-400 rounded-full animate-bounce" />
+                        <div className="w-1 h-1 bg-violet-400 rounded-full animate-bounce [animation-delay:0.2s]" />
+                        <div className="w-1 h-1 bg-violet-400 rounded-full animate-bounce [animation-delay:0.4s]" />
                       </div>
                     </div>
                   </div>
                 )}
-                
-                {currentThread.length === 0 && (
-                  <div className="text-xs text-gray-500 text-center py-8">Start a conversation…</div>
-                )}
               </div>
 
-              <div className="border-t p-2 flex items-center gap-2">
-                <button className="p-2 text-gray-500 hover:text-gray-700" title="Attach">
-                  <Paperclip className="h-4 w-4" />
-                </button>
-                <input
-                  value={composeText}
-                  onChange={(e) => {
-                    setComposeText(e.target.value);
-                    handleTyping(e.target.value);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      if (canSend) handleSend();
-                    }
-                  }}
-                  className="flex-1 text-sm px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary-200"
-                  placeholder="Type a message"
-                />
-                <button
-                  onClick={handleSend}
-                  disabled={!canSend}
-                  className={`px-3 py-2 rounded-md text-white flex items-center gap-2 ${canSend ? 'bg-primary-600 hover:bg-primary-700' : 'bg-gray-300 cursor-not-allowed'}`}
-                >
-                  <Send className="h-4 w-4" />
-                  <span className="text-xs">Send</span>
-                </button>
+              {/* Input Area */}
+              <div className="p-4 bg-white/60 backdrop-blur-md border-t border-white/60">
+                <div className="relative flex items-end gap-2">
+                  <div className="flex-1 bg-gray-50/50 rounded-2xl border border-gray-200 focus-within:border-violet-400 focus-within:ring-2 focus-within:ring-violet-100 transition-all">
+                    <textarea
+                      rows={1}
+                      value={composeText}
+                      onChange={(e) => {
+                        setComposeText(e.target.value);
+                        handleTyping(e.target.value);
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          if (canSend) handleSend();
+                        }
+                      }}
+                      className="w-full bg-transparent border-none focus:ring-0 text-sm py-3 px-4 resize-none max-h-32 placeholder:text-gray-400 font-medium"
+                      placeholder="Type your message..."
+                    />
+                    <div className="flex items-center justify-between px-3 pb-2">
+                      <button className="p-1.5 rounded-lg hover:bg-gray-200/50 text-gray-400 transition-colors">
+                        <Paperclip className="h-4 w-4" />
+                      </button>
+                      <span className="text-[9px] font-bold text-gray-300 uppercase">Press Enter to Send</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleSend}
+                    disabled={!canSend}
+                    className={`h-[46px] w-[46px] rounded-2xl flex items-center justify-center transition-all shadow-lg ${
+                      canSend 
+                        ? 'bg-violet-600 text-white shadow-violet-200 hover:scale-105 active:scale-95' 
+                        : 'bg-gray-100 text-gray-300 cursor-not-allowed shadow-none'
+                    }`}
+                  >
+                    <Send className="h-5 w-5 ml-0.5" />
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -449,7 +444,4 @@ const ChatWidget = forwardRef<ChatWidgetRef, ChatWidgetProps>((props, ref) => {
 });
 
 ChatWidget.displayName = 'ChatWidget';
-
 export default ChatWidget;
-
-

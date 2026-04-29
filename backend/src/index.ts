@@ -58,11 +58,11 @@ mongoose
   .connect(MONGO_URI)
   .then(() => {
     // eslint-disable-next-line no-console
-    console.log('Connected to MongoDB');
+    
   })
   .catch((err) => {
     // eslint-disable-next-line no-console
-    console.error('MongoDB connection error:', err);
+    
     process.exit(1);
   });
 
@@ -84,7 +84,7 @@ app.use('/api/doctor', patientDoctorRoutes);
 
 // Global Error Handler
 app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('Unhandled Error:', err);
+  
   
   // Ensure CORS headers are present even in error responses
   const origin = req.headers.origin;
@@ -109,9 +109,9 @@ websocketService.initialize(server);
 if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
   server.listen(PORT, () => {
     // eslint-disable-next-line no-console
-    console.log(`Server running on port ${PORT}`);
+    
     // eslint-disable-next-line no-console
-    console.log(`WebSocket server initialized`);
+    
   });
 }
 

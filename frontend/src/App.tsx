@@ -5,6 +5,9 @@ import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import PatientDashboard from './pages/PatientDashboard';
 import DoctorDashboard from './pages/DoctorDashboard';
+import DoctorPatients from './pages/DoctorPatients';
+import DoctorReports from './pages/DoctorReports';
+import DoctorAnalytics from './pages/DoctorAnalytics';
 import LiveExercisePage from './pages/LiveExercisePage';
 import ProgressPage from './pages/ProgressPage';
 import ProfilePage from './pages/ProfilePage';
@@ -86,6 +89,30 @@ const AppRoutes: React.FC = () => {
         <ProtectedRoute requiredRole="doctor">
           <Layout>
             <DoctorDashboard />
+          </Layout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/doctor/patients" element={
+        <ProtectedRoute requiredRole="doctor">
+          <Layout>
+            <DoctorPatients />
+          </Layout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/doctor/reports" element={
+        <ProtectedRoute requiredRole="doctor">
+          <Layout>
+            <DoctorReports />
+          </Layout>
+        </ProtectedRoute>
+      } />
+
+      <Route path="/doctor/analytics" element={
+        <ProtectedRoute requiredRole="doctor">
+          <Layout>
+            <DoctorAnalytics />
           </Layout>
         </ProtectedRoute>
       } />

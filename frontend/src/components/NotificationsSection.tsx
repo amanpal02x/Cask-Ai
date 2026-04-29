@@ -48,7 +48,7 @@ const NotificationsSection: React.FC<NotificationsSectionProps> = ({ onOpenChat 
     // Listen for real-time notifications
     const handleWebSocketNotification = (event: CustomEvent) => {
       const notification = event.detail;
-      console.log('Received real-time notification:', notification);
+      
       
       // Add new notification to the list
       const newNotification: Notification = {
@@ -78,7 +78,7 @@ const NotificationsSection: React.FC<NotificationsSectionProps> = ({ onOpenChat 
         setNotifications(response.data || []);
       }
     } catch (error) {
-      console.error('Failed to fetch notifications:', error);
+      
     } finally {
       setLoading(false);
     }
@@ -91,7 +91,7 @@ const NotificationsSection: React.FC<NotificationsSectionProps> = ({ onOpenChat 
         prev.map(n => n.id === notificationId ? { ...n, isRead: true } : n)
       );
     } catch (error) {
-      console.error('Failed to mark notification as read:', error);
+      
     }
   };
 

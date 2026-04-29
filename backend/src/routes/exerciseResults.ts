@@ -35,9 +35,9 @@ router.post("/analyze", async (req, res) => {
     });
   } catch (err) {
     if (err instanceof Error) {
-      console.error("Error saving result:", err.message);
+      
     } else {
-      console.error("Error saving result:", err);
+      
     }
     res.status(500).json({ error: "Server error" });
   }

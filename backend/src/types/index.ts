@@ -96,6 +96,13 @@ export interface DashboardStats {
   streakDays: number;
   weeklyProgress: number;
   improvementRate: number;
+  totalPatients?: number;
+  adherenceRate?: number;
+  precisionRate?: number;
+  correctionRate?: number;
+  growthRate?: number;
+  activeSessions?: number;
+  activeSessionsList?: Array<{ patientName: string; exerciseName: string; startTime: string }>;
 }
 
 export interface ChartData {

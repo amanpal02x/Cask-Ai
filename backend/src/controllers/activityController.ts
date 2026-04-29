@@ -32,7 +32,7 @@ export const getActivityFeed = async (req: Request, res: Response) => {
     
     res.json(response);
   } catch (error) {
-    console.error('Error fetching activity feed:', error);
+    
     const response: ApiResponse<null> = {
       success: false,
       data: null,
@@ -67,7 +67,7 @@ export const getRecentActivity = async (req: Request, res: Response) => {
     
     res.json(response);
   } catch (error) {
-    console.error('Error fetching recent activity:', error);
+    
     const response: ApiResponse<null> = {
       success: false,
       data: null,
@@ -106,7 +106,7 @@ export const getActivityStats = async (req: Request, res: Response) => {
     
     res.json(response);
   } catch (error) {
-    console.error('Error fetching activity stats:', error);
+    
     const response: ApiResponse<null> = {
       success: false,
       data: null,
@@ -149,7 +149,7 @@ export const markActivitiesAsRead = async (req: Request, res: Response) => {
     
     res.json(response);
   } catch (error) {
-    console.error('Error marking activities as read:', error);
+    
     const response: ApiResponse<null> = {
       success: false,
       data: null,
@@ -192,7 +192,7 @@ export const archiveActivities = async (req: Request, res: Response) => {
     
     res.json(response);
   } catch (error) {
-    console.error('Error archiving activities:', error);
+    
     const response: ApiResponse<null> = {
       success: false,
       data: null,
@@ -225,7 +225,7 @@ export const getActivityById = async (req: Request, res: Response) => {
     
     res.json(response);
   } catch (error) {
-    console.error('Error fetching activity:', error);
+    
     const response: ApiResponse<null> = {
       success: false,
       data: null,

@@ -19,17 +19,25 @@ export const startSession = async (req: Request, res: Response) => {
     // Handle default exercise case
     let validExerciseId = exerciseId;
     if (exerciseId === 'default') {
-      // For default exercises, we'll use a special handling
-      // First, try to find or create a default exercise
       const { ExerciseService } = await import('../services/exerciseService');
       const defaultExercise = await ExerciseService.getOrCreateDefaultExercise(userId);
       validExerciseId = defaultExercise.id;
     }
     
+    // Automatically find doctor if not provided
+    let actualDoctorId = doctorId;
+    if (!actualDoctorId) {
+      const PatientDoctor = (await import('../models/PatientDoctor')).default;
+      const connection = await PatientDoctor.findOne({ patientId: userId, status: 'active' });
+      if (connection) {
+        actualDoctorId = connection.doctorId.toString();
+      }
+    }
+    
     const newSession = await SessionService.startSession(
       userId, 
       validExerciseId, 
-      doctorId,
+      actualDoctorId,
       scheduledDuration,
       req.headers['user-agent']
     );
@@ -42,7 +50,7 @@ export const startSession = async (req: Request, res: Response) => {
     
     res.status(201).json(response);
   } catch (error) {
-    console.error('Error starting session:', error);
+    
     const response: ApiResponse<null> = {
       success: false,
       data: null,
@@ -86,7 +94,7 @@ export const endSession = async (req: Request, res: Response) => {
     
     res.json(response);
   } catch (error) {
-    console.error('Error ending session:', error);
+    
     const response: ApiResponse<null> = {
       success: false,
       data: null,
@@ -125,11 +133,51 @@ export const getSessionHistory = async (req: Request, res: Response) => {
     
     res.json(response);
   } catch (error) {
-    console.error('Error fetching session history:', error);
+    
     const response: ApiResponse<null> = {
       success: false,
       data: null,
       message: 'Failed to fetch session history'
+    };
+    res.status(500).json(response);
+  }
+};
+
+export const getDoctorPracticeSessions = async (req: Request, res: Response) => {
+  try {
+    const { limit = 20, offset = 0, patientId, exerciseId } = req.query;
+    const doctorId = (req as any).user?.id;
+    const userRole = (req as any).user?.role;
+
+    if (!doctorId || userRole !== 'doctor') {
+      const response: ApiResponse<null> = {
+        success: false,
+        data: null,
+        message: 'Unauthorized: Doctor role required'
+      };
+      return res.status(403).json(response);
+    }
+
+    const sessions = await SessionService.getDoctorPatientSessions(doctorId, {
+      limit: Number(limit),
+      offset: Number(offset),
+      patientId: patientId as string,
+      exerciseId: exerciseId as string
+    });
+
+    const response: ApiResponse<typeof sessions> = {
+      success: true,
+      data: sessions,
+      message: 'Practice-wide sessions retrieved successfully'
+    };
+
+    res.json(response);
+  } catch (error) {
+    
+    const response: ApiResponse<null> = {
+      success: false,
+      data: null,
+      message: 'Failed to fetch practice sessions'
     };
     res.status(500).json(response);
   }
@@ -158,7 +206,7 @@ export const getSession = async (req: Request, res: Response) => {
     
     res.json(response);
   } catch (error) {
-    console.error('Error fetching session:', error);
+    
     const response: ApiResponse<null> = {
       success: false,
       data: null,
@@ -171,13 +219,7 @@ export const getSession = async (req: Request, res: Response) => {
 export const uploadSessionVideo = async (req: Request, res: Response) => {
   try {
     const { sessionId } = req.params;
-    console.log('UploadSessionVideo - sessionId:', sessionId);
-    console.log('UploadSessionVideo - file:', req.file ? {
-      fieldname: req.file.fieldname,
-      originalname: req.file.originalname,
-      mimetype: req.file.mimetype,
-      size: req.file.size
-    } : 'NULL');
+    
     
     // If using multer, the file is in req.file
     if (!req.file) {
@@ -226,7 +268,7 @@ export const uploadSessionVideo = async (req: Request, res: Response) => {
     // Start processing in the background (using a self-executing async function)
     (async () => {
       try {
-        console.log(`Starting background ML analysis for session ${sessionId}...`);
+        
         const mlResult = await processSessionVideo(sessionId, videoUrl, exerciseName);
         
         if (mlResult.success && mlResult.results) {
@@ -243,10 +285,10 @@ export const uploadSessionVideo = async (req: Request, res: Response) => {
             repAnalysis: [],
             videoUrl: videoUrl
           });
-          console.log(`ML analysis completed for session ${sessionId}`);
+          
         }
       } catch (err) {
-        console.error(`Background ML analysis failed for session ${sessionId}:`, err);
+        
       }
     })();
     
@@ -258,7 +300,7 @@ export const uploadSessionVideo = async (req: Request, res: Response) => {
     
     res.json(response);
   } catch (error) {
-    console.error('Error uploading session video:', error);
+    
     const response: ApiResponse<null> = {
       success: false,
       data: null,
@@ -315,14 +357,14 @@ export const analyzeFrame = async (req: Request, res: Response) => {
     };
 
     if (Math.random() > 0.8) { // Save approx 20% of analyzed frames to DB to save space/perf
-        SessionService.addPoseFrame(sessionId, frameData).catch(err => console.error("Error saving pose frame:", err));
+        SessionService.addPoseFrame(sessionId, frameData);
     }
  
     // Update rep count from ML results
     let currentRepCount = session.reps || 0;
     if (result.repCount !== undefined && result.repCount > currentRepCount) {
       currentRepCount = result.repCount;
-      SessionService.updateSessionReps(sessionId, currentRepCount).catch(err => console.error("Error updating reps:", err));
+      SessionService.updateSessionReps(sessionId, currentRepCount);
     }
 
     const response: ApiResponse<{
@@ -347,7 +389,7 @@ export const analyzeFrame = async (req: Request, res: Response) => {
     
     res.json(response);
   } catch (error) {
-    console.error('Error analyzing frame:', error);
+    
     const response: ApiResponse<null> = {
       success: false,
       data: null,

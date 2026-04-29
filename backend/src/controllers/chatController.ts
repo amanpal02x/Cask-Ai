@@ -43,7 +43,7 @@ export const getChatHistory = async (req: Request, res: Response) => {
       }
     });
   } catch (error) {
-    console.error('Error loading chat history:', error);
+    
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };
@@ -97,7 +97,7 @@ export const markMessagesAsRead = async (req: Request, res: Response) => {
       }
     });
   } catch (error) {
-    console.error('Error marking messages as read:', error);
+    
     res.status(500).json({ success: false, message: 'Internal server error' });
   }
 };

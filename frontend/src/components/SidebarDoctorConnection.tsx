@@ -151,7 +151,7 @@ const SidebarDoctorConnection: React.FC<SidebarDoctorConnectionProps> = ({ userI
         setError('Failed to load doctor connection data');
       }
     } catch (error) {
-      console.error('Failed to fetch connection status:', error);
+      
       setError('Unable to reach server. Please try again.');
     } finally {
       setLoading(false);
@@ -170,7 +170,7 @@ const SidebarDoctorConnection: React.FC<SidebarDoctorConnectionProps> = ({ userI
     } catch (error) {
       // Surface backend-provided message when available (e.g., 400 existing request)
       const message = (error as any)?.response?.data?.message || 'Failed to connect to doctor';
-      console.error('Failed to connect to doctor:', error);
+      
       try {
         // eslint-disable-next-line no-alert
         window.alert(message);
@@ -182,7 +182,7 @@ const SidebarDoctorConnection: React.FC<SidebarDoctorConnectionProps> = ({ userI
 
   const handleDisconnectDoctor = async () => {
     try {
-      console.log('[SidebarDoctorConnection] Disconnect request starting');
+      
       setDisconnecting(true);
       // Optimistic UI: mark as disconnected immediately
       setConnectionStatus((prev) =>
@@ -208,13 +208,13 @@ const SidebarDoctorConnection: React.FC<SidebarDoctorConnectionProps> = ({ userI
 
       const response = await apiService.disconnectFromDoctor();
       if (response.success) {
-        console.log('[SidebarDoctorConnection] Disconnect successful');
+        
         // Mark offline after disconnect
         try {
           await apiService.updateOnlineStatus(false);
           updateStatus(false);
         } catch (e) {
-          console.error('Failed to update online status after disconnect:', e);
+          
         }
         // Refresh from server to reflect final state
         fetchConnectionStatus();
@@ -228,7 +228,7 @@ const SidebarDoctorConnection: React.FC<SidebarDoctorConnectionProps> = ({ userI
         setShowDisconnectModal(false);
       }
     } catch (error) {
-      console.error('Failed to disconnect from doctor:', error);
+      
     } finally {
       setDisconnecting(false);
     }
@@ -336,7 +336,7 @@ const SidebarDoctorConnection: React.FC<SidebarDoctorConnectionProps> = ({ userI
                       fetchConnectionStatus();
                     }
                   } catch (e) {
-                    console.error('Failed to cancel request', e);
+                    
                   }
                 }}
               >
@@ -350,7 +350,7 @@ const SidebarDoctorConnection: React.FC<SidebarDoctorConnectionProps> = ({ userI
               <button
                 type="button"
                 onClick={() => {
-                  console.log('[SidebarDoctorConnection] Open disconnect modal');
+                  
                   // Direct confirm + disconnect to ensure network call fires
                   const confirmed = window.confirm('Are you sure you want to disconnect from your doctor?');
                   if (confirmed) {
@@ -544,7 +544,7 @@ const SidebarDoctorConnection: React.FC<SidebarDoctorConnectionProps> = ({ userI
               <button
                 type="button"
                 onClick={() => {
-                  console.log('[SidebarDoctorConnection] Cancel disconnect clicked');
+                  
                   setShowDisconnectModal(false);
                 }}
                 className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
@@ -555,7 +555,7 @@ const SidebarDoctorConnection: React.FC<SidebarDoctorConnectionProps> = ({ userI
               <button
                 type="button"
                 onClick={() => {
-                  console.log('[SidebarDoctorConnection] Modal disconnect clicked');
+                  
                   handleDisconnectDoctor();
                 }}
                 disabled={disconnecting}

@@ -32,7 +32,7 @@ export const getNotifications = async (req: Request, res: Response) => {
     
     res.json(response);
   } catch (error) {
-    console.error('Error fetching notifications:', error);
+    
     const response: ApiResponse<null> = {
       success: false,
       data: null,
@@ -65,7 +65,7 @@ export const getUnreadCount = async (req: Request, res: Response) => {
     
     res.json(response);
   } catch (error) {
-    console.error('Error fetching unread count:', error);
+    
     const response: ApiResponse<null> = {
       success: false,
       data: null,
@@ -99,7 +99,7 @@ export const markAsRead = async (req: Request, res: Response) => {
     
     res.json(response);
   } catch (error) {
-    console.error('Error marking notification as read:', error);
+    
     const response: ApiResponse<null> = {
       success: false,
       data: null,
@@ -142,7 +142,7 @@ export const markMultipleAsRead = async (req: Request, res: Response) => {
     
     res.json(response);
   } catch (error) {
-    console.error('Error marking notifications as read:', error);
+    
     const response: ApiResponse<null> = {
       success: false,
       data: null,
@@ -175,7 +175,7 @@ export const markAllAsRead = async (req: Request, res: Response) => {
     
     res.json(response);
   } catch (error) {
-    console.error('Error marking all notifications as read:', error);
+    
     const response: ApiResponse<null> = {
       success: false,
       data: null,
@@ -209,7 +209,7 @@ export const archiveNotification = async (req: Request, res: Response) => {
     
     res.json(response);
   } catch (error) {
-    console.error('Error archiving notification:', error);
+    
     const response: ApiResponse<null> = {
       success: false,
       data: null,
@@ -242,7 +242,7 @@ export const getNotificationStats = async (req: Request, res: Response) => {
     
     res.json(response);
   } catch (error) {
-    console.error('Error fetching notification stats:', error);
+    
     const response: ApiResponse<null> = {
       success: false,
       data: null,
@@ -276,7 +276,7 @@ export const deleteNotification = async (req: Request, res: Response) => {
     
     res.json(response);
   } catch (error) {
-    console.error('Error deleting notification:', error);
+    
     const response: ApiResponse<null> = {
       success: false,
       data: null,

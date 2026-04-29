@@ -27,7 +27,7 @@ export const getExercises = async (req: Request, res: Response) => {
     };
     res.json(response);
   } catch (error) {
-    console.error("Error fetching exercises:", error);
+    
     const response: ApiResponse<null> = {
       success: false,
       data: null,
@@ -57,7 +57,7 @@ export const getExercise = async (req: Request, res: Response) => {
     };
     res.json(response);
   } catch (error) {
-    console.error("Error fetching exercise:", error);
+    
     res.status(500).json({
       success: false,
       data: null,
@@ -88,7 +88,7 @@ export const createExercise = async (req: Request, res: Response) => {
     };
     res.status(201).json(response);
   } catch (error) {
-    console.error("Error creating exercise:", error);
+    
     res.status(500).json({
       success: false,
       data: null,
@@ -128,7 +128,7 @@ export const updateExercise = async (req: Request, res: Response) => {
     };
     res.json(response);
   } catch (error) {
-    console.error("Error updating exercise:", error);
+    
     res.status(500).json({
       success: false,
       data: null,
@@ -158,7 +158,7 @@ export const deleteExercise = async (req: Request, res: Response) => {
     };
     res.json(response);
   } catch (error) {
-    console.error("Error deleting exercise:", error);
+    
     res.status(500).json({
       success: false,
       data: null,
@@ -208,7 +208,7 @@ export const analyzeExercise = async (req: Request, res: Response) => {
 
     res.json(response);
   } catch (err: any) {
-    console.error("Error analyzing exercise:", err);
+    
     res.status(500).json({ 
       success: false, 
       message: "Failed to analyze exercise",
@@ -231,7 +231,7 @@ export const seedExercises = async (req: Request, res: Response) => {
     };
     res.json(response);
   } catch (error) {
-    console.error("Error seeding exercises:", error);
+    
     res.status(500).json({
       success: false,
       data: null,

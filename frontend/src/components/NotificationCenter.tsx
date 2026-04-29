@@ -51,7 +51,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ onOpenChat }) =
     // Listen for real-time notifications
     const handleWebSocketNotification = (event: CustomEvent) => {
       const notification = event.detail;
-      console.log('Received real-time notification:', notification);
+      
       
       // Add new notification to the list
       const newNotification: Notification = {
@@ -98,7 +98,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ onOpenChat }) =
         setUnreadCount((response.data || []).filter((n: Notification) => !n.isRead).length);
       }
     } catch (error) {
-      console.error('Failed to fetch notifications:', error);
+      
     } finally {
       setLoading(false);
     }
@@ -112,7 +112,7 @@ const NotificationCenter: React.FC<NotificationCenterProps> = ({ onOpenChat }) =
       );
       setUnreadCount(prev => Math.max(0, prev - 1));
     } catch (error) {
-      console.error('Failed to mark notification as read:', error);
+      
     }
   };
 
