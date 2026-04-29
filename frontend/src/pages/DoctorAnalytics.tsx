@@ -1,13 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { 
   BarChart3, 
-  TrendingUp, 
   Users, 
   Activity,
   ArrowUpRight,
   Target,
-  CheckCircle,
-  Clock,
   Sparkles
 } from 'lucide-react';
 import { useAuth } from '../hooks/useAuth';
@@ -16,7 +13,7 @@ import LoadingSpinner from '../components/LoadingSpinner';
 import '../SereneWellness.css';
 
 const DoctorAnalytics: React.FC = () => {
-  const { user } = useAuth();
+  useAuth();
   const [stats, setStats] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [patients, setPatients] = useState<any[]>([]);
@@ -60,7 +57,7 @@ const DoctorAnalytics: React.FC = () => {
 
           if (patientProgressRes.success && patientProgressRes.data) {
             // Transform patient-specific data to match stats structure
-            const patientData = patients.find(p => p.id === selectedPatientId);
+
             const data = patientProgressRes.data;
             setStats({
               totalPatients: 1,

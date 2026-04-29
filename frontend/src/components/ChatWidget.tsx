@@ -2,7 +2,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState, forwardRef, u
 import { useAuth } from '../hooks/useAuth';
 import { useWebSocket } from '../hooks/useWebSocket';
 import apiService from '../services/api';
-import { Paperclip, Send, MessageSquare, X, Circle, User, Sparkles } from 'lucide-react';
+import { Paperclip, Send, MessageSquare, X, Sparkles } from 'lucide-react';
 import '../SereneWellness.css';
 
 interface MessageItem {

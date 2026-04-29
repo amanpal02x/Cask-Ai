@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { FileText, Download, Filter, Search, ChevronRight, Activity, Calendar, User, X } from 'lucide-react';
+import { FileText, Download, Filter, Search, ChevronRight, Activity, Calendar, X } from 'lucide-react';
 import apiService from '../services/api';
 import LoadingSpinner from '../components/LoadingSpinner';
 import '../SereneWellness.css';

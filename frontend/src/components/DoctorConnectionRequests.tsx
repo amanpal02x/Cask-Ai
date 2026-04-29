@@ -4,10 +4,9 @@ import {
   X,
   Clock,
   Users,
-  Sparkles,
 } from 'lucide-react';
 import apiService from '../services/api';
-import LoadingSpinner from './LoadingSpinner';
+
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useAuth } from '../hooks/useAuth';
 
