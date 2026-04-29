@@ -118,6 +118,7 @@ class ApiService {
 async analyzePose(sessionId: string, landmarks: number[][]): Promise<ApiResponse<{
   accuracy: number;
   feedback: string[];
+  primaryCoaching?: string;
   repCount?: number;
   isCorrectForm: boolean;
   confidence: number;

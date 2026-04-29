@@ -140,10 +140,11 @@ const LiveExercisePage: React.FC = () => {
 
         // Set feedback
         const rawFeedback = response.data.feedback || [];
-        const feedbackMessage = rawFeedback.join(' ');    
+        const feedbackMessage = response.data.primaryCoaching || rawFeedback.join(' ');    
         setFeedback({
           isCorrect: response.data.isCorrectForm ?? (response.data.accuracy > 70),
           message: feedbackMessage,
+          primaryCoaching: response.data.primaryCoaching,
           accuracy: response.data.accuracy, // Added for sync with PostureGuidance
           confidence: (response.data.confidence ?? response.data.accuracy / 100),
           timestamp: Date.now(),
@@ -703,6 +704,7 @@ const LiveExercisePage: React.FC = () => {
                   <ExerciseSimulator 
                     exerciseName={exercise.name} 
                     isRecording={isRecording && !isPaused} 
+                    activeMistake={(feedback as any)?.suggestions && (feedback as any).suggestions.length > 0 ? (feedback as any).suggestions[0] : null}
                   />
                 </div>
               )}

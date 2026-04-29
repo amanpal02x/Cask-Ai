@@ -1,3 +1,8 @@
+import os
+from dotenv import load_dotenv
+
+load_dotenv()
+
 # Exercise Configuration and Model Settings
 
 EXERCISE_CONFIG = {
@@ -15,4 +20,12 @@ MODEL_SETTINGS = {
         {'type': 'output', 'units': 1, 'activation': 'sigmoid'}
     ],
     'optimizer': 'adam'
+}
+
+# LLM Configuration for Coaching Feedback
+LLM_CONFIG = {
+    'api_url': os.getenv('LLM_API_URL', 'http://localhost:11434/api/generate'),
+    'api_key': os.getenv('LLM_API_KEY', ''),
+    'model': os.getenv('LLM_MODEL', 'llama3'),
+    'is_openai_compatible': os.getenv('LLM_IS_OPENAI', 'false').lower() == 'true'
 }

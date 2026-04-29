@@ -132,6 +132,7 @@ export interface CameraSettings {
 export interface RealTimeFeedback {
   isCorrect: boolean;
   message: string;
+  primaryCoaching?: string;
   confidence: number;
   timestamp: number;
 }
