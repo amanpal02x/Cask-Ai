@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useCallback } from 'react';
 
 interface Point {
   x: number;
@@ -26,7 +26,7 @@ const ExerciseSimulator: React.FC<ExerciseSimulatorProps> = ({
   const frameRef = useRef<number>(0);
 
   // Procedural keyframes for different exercises
-  const getFrames = (name: string, isMistake: boolean = false): SkeletonFrame[] => {
+  const getFrames = useCallback((name: string, isMistake: boolean = false): SkeletonFrame[] => {
     const n = name.toLowerCase();
     const mistake = activeMistake?.toLowerCase() || '';
     
@@ -91,7 +91,7 @@ const ExerciseSimulator: React.FC<ExerciseSimulatorProps> = ({
         ankle_r: { x: 0.6, y: 0.9 }
       }
     }];
-  };
+  }, [activeMistake]);
 
   const drawSkeleton = (ctx: CanvasRenderingContext2D, frame: SkeletonFrame, color: string, alpha: number = 1) => {
     const { width, height } = ctx.canvas;
@@ -170,7 +170,7 @@ const ExerciseSimulator: React.FC<ExerciseSimulatorProps> = ({
 
     frameId = requestAnimationFrame(animate);
     return () => cancelAnimationFrame(frameId);
-  }, [exerciseName, speed, activeMistake]);
+  }, [exerciseName, speed, activeMistake, getFrames]);
 
   return (
     <div className="relative bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
