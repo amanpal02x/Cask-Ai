@@ -54,4 +54,24 @@ export const updateProfile = async (req: Request, res: Response) => {
   }
 };
 
+export const updateOnlineStatus = async (req: Request, res: Response) => {
+  try {
+    const { isOnline } = req.body;
+    const user = await User.findByIdAndUpdate(
+      (req as any).user?.id, 
+      { isOnline, lastSeen: new Date() }, 
+      { new: true }
+    );
+    
+    if (!user) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
 
+    return res.json({
+      success: true,
+      data: { isOnline: user.isOnline, lastSeen: user.lastSeen }
+    });
+  } catch (error) {
+    return res.status(500).json({ success: false, error: 'Server error' });
+  }
+};

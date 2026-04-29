@@ -73,3 +73,40 @@ export const getProgressData = async (req: Request, res: Response) => {
     res.status(500).json(response);
   }
 };
+
+export const getRecentActivity = async (req: Request, res: Response) => {
+  try {
+    const { limit } = req.query;
+    const userId = (req as any).user?.id;
+    
+    if (!userId) {
+      const response: ApiResponse<null> = {
+        success: false,
+        data: null,
+        message: 'User not authenticated'
+      };
+      return res.status(401).json(response);
+    }
+    
+    const activities = await DashboardService.getRecentActivity(
+      userId, 
+      limit ? parseInt(limit as string) : 10
+    );
+    
+    const response: ApiResponse<typeof activities> = {
+      success: true,
+      data: activities,
+      message: 'Recent activity retrieved successfully'
+    };
+    
+    res.json(response);
+  } catch (error) {
+    console.error('Error fetching recent activity:', error);
+    const response: ApiResponse<null> = {
+      success: false,
+      data: null,
+      message: 'Failed to fetch recent activity'
+    };
+    res.status(500).json(response);
+  }
+};

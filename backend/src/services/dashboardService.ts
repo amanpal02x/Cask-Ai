@@ -192,6 +192,24 @@ export class DashboardService {
     }));
   }
 
+  // Get recent activity for a user
+  static async getRecentActivity(userId: string, limit: number = 10) {
+    const userObjectId = new Types.ObjectId(userId);
+    
+    const activities = await Activity.find({
+      $or: [
+        { userId: userObjectId },
+        { relatedUserId: userObjectId }
+      ]
+    })
+    .sort({ createdAt: -1 })
+    .limit(limit)
+    .populate('userId', 'name avatar role')
+    .populate('relatedUserId', 'name avatar role');
+    
+    return activities;
+  }
+
   // Calculate current streak for a patient
   private static async calculateCurrentStreak(userId: Types.ObjectId): Promise<number> {
     const sessions = await ExerciseSession.find({
