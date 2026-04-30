@@ -22,33 +22,46 @@ dotenv.config();
 const app = express();
 
 // CORS must be at the top
+const allowedOrigins = [
+  'http://localhost:3000',
+  'https://cask-ai.vercel.app',
+  process.env.CLIENT_ORIGIN
+].filter(Boolean) as string[];
+
 app.use(
   cors({
     origin: (origin, callback) => {
       // Allow requests with no origin (like mobile apps or curl)
       if (!origin) return callback(null, true);
       
-      const allowedOrigins = [
-        process.env.CLIENT_ORIGIN,
-        'http://localhost:3000',
-        'https://cask-ai.vercel.app'
-      ].filter(Boolean) as string[];
-      
-      if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.vercel.app')) {
+      const isAllowed = allowedOrigins.includes(origin) || 
+                       origin.endsWith('.vercel.app') || 
+                       origin.includes('localhost');
+                       
+      if (isAllowed) {
         callback(null, true);
       } else {
-        callback(null, true); // Fallback to true during debugging, or use more strict logic
+        // Log unauthorized origin but allow during debugging if needed
+        
+        callback(null, true); 
       }
     },
     credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS', 'PATCH'],
+    allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Accept', 'Origin'],
+    exposedHeaders: ['Set-Cookie']
   })
 );
 
 app.use(express.json());
 app.use('/uploads', express.static(path.join(process.cwd(), 'uploads')));
 app.use(morgan('dev'));
+
+// Request logging middleware for debugging
+app.use((req, res, next) => {
+  
+  next();
+});
 
 app.options('*', cors()); // Enable pre-flight for all routes
 
