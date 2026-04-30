@@ -36,9 +36,14 @@ const ExerciseSimulator: React.FC<ExerciseSimulatorProps> = ({
         const t = Math.sin((i / 60) * Math.PI); 
         let squatDepth = t * 0.3;
         
-        // Simulate "Go Lower" mistake
-        if (isMistake && (mistake.includes('lower') || mistake.includes('depth'))) {
-            squatDepth = t * 0.12; // Shallow squat
+        // If it's a mistake frame, we either show the specific mistake 
+        // or just a "bad form" version (shallow squat) if no keyword match
+        if (isMistake) {
+            if (mistake.includes('lower') || mistake.includes('depth') || !mistake) {
+                squatDepth = t * 0.12; // Shallow squat
+            } else {
+                squatDepth = t * 0.35; // Too deep squat
+            }
         }
 
         return {
@@ -61,19 +66,24 @@ const ExerciseSimulator: React.FC<ExerciseSimulatorProps> = ({
         const t = Math.sin((i / 60) * Math.PI);
         let pushDepth = t * 0.15;
 
-        // Simulate "Hips too high" mistake
+        // If it's a mistake frame, default to "high hips" if no keyword match
         let hipY = 0.6;
-        if (isMistake && (mistake.includes('hip') || mistake.includes('high'))) {
-            hipY = 0.45; 
+        if (isMistake) {
+            if (mistake.includes('hip') || mistake.includes('high') || !mistake) {
+                hipY = 0.45; // Hips too high
+            } else {
+                pushDepth = t * 0.05; // Shallow pushup
+            }
         }
 
         return {
           points: {
             head: { x: 0.2, y: 0.55 + pushDepth },
             shoulder: { x: 0.3, y: 0.6 + pushDepth },
-            elbow: { x: 0.35, y: 0.75 + pushDepth * 0.3 },
-            hip: { x: 0.6, y: hipY },
-            ankle: { x: 0.9, y: 0.6 }
+            elbow_l: { x: 0.35, y: 0.75 + pushDepth * 0.3 },
+            hip: { x: 0.6, y: hipY + pushDepth * 0.5 },
+            knee_l: { x: 0.75, y: 0.6 + pushDepth * 0.2 },
+            ankle_l: { x: 0.9, y: 0.6 }
           }
         };
       });
@@ -85,9 +95,13 @@ const ExerciseSimulator: React.FC<ExerciseSimulatorProps> = ({
         const t = Math.sin((i / 60) * Math.PI);
         let liftAngle = t * 0.4; // 0 to 0.4 height lift
 
-        // Simulate "Raise arm higher" mistake
-        if (isMistake && (mistake.includes('higher') || mistake.includes('lift'))) {
-            liftAngle = t * 0.15; // Low lift
+        // If mistake, default to low lift
+        if (isMistake) {
+            if (mistake.includes('higher') || mistake.includes('lift') || !mistake) {
+                liftAngle = t * 0.15; // Low lift
+            } else {
+                liftAngle = t * 0.5; // Too high lift
+            }
         }
 
         return {
@@ -110,7 +124,12 @@ const ExerciseSimulator: React.FC<ExerciseSimulatorProps> = ({
     if (n.includes('lunge')) {
       return Array.from({ length: 60 }, (_, i) => {
         const t = Math.sin((i / 60) * Math.PI);
-        const lungeDepth = t * 0.25;
+        let lungeDepth = t * 0.25;
+
+        // If mistake, default to shallow lunge
+        if (isMistake) {
+            lungeDepth = t * 0.12; 
+        }
         
         return {
           points: {
@@ -129,23 +148,28 @@ const ExerciseSimulator: React.FC<ExerciseSimulatorProps> = ({
     // Plank simulation
     if (n.includes('plank')) {
       return Array.from({ length: 60 }, (_, i) => {
-        // Plank is static but we add a tiny wobble
         const t = Math.sin((i / 60) * Math.PI * 10) * 0.005;
+        let hipY = 0.75;
+
+        // If mistake, drop the hips
+        if (isMistake) {
+            hipY = 0.82;
+        }
         
         return {
           points: {
             head: { x: 0.2, y: 0.7 + t },
             shoulder: { x: 0.3, y: 0.75 + t },
-            elbow: { x: 0.3, y: 0.85 },
-            hip: { x: 0.6, y: 0.75 + t },
-            ankle: { x: 0.9, y: 0.75 }
+            elbow_l: { x: 0.3, y: 0.85 },
+            hip: { x: 0.6, y: hipY + t },
+            ankle_l: { x: 0.9, y: 0.75 }
           }
         };
       });
     }
 
     // Default standing/idle
-    return [{
+    return Array.from({ length: 60 }, () => ({
       points: {
         head: { x: 0.5, y: 0.1 },
         shoulder: { x: 0.5, y: 0.2 },
@@ -155,7 +179,7 @@ const ExerciseSimulator: React.FC<ExerciseSimulatorProps> = ({
         ankle_l: { x: 0.4, y: 0.9 },
         ankle_r: { x: 0.6, y: 0.9 }
       }
-    }];
+    }));
   }, [activeMistake]);
 
   const drawSkeleton = (ctx: CanvasRenderingContext2D, frame: SkeletonFrame, color: string, alpha: number = 1) => {
@@ -187,16 +211,23 @@ const ExerciseSimulator: React.FC<ExerciseSimulatorProps> = ({
     
     if (pts.head && pts.shoulder) drawLine(pts.head, pts.shoulder);
     if (pts.shoulder && pts.hip) drawLine(pts.shoulder, pts.hip);
+    
+    // Left side legs
     if (pts.hip && pts.knee_l) drawLine(pts.hip, pts.knee_l);
     if (pts.knee_l && pts.ankle_l) drawLine(pts.knee_l, pts.ankle_l);
+    // Right side legs
     if (pts.hip && pts.knee_r) drawLine(pts.hip, pts.knee_r);
     if (pts.knee_r && pts.ankle_r) drawLine(pts.knee_r, pts.ankle_r);
-    if ((pts as any).knee && !(pts as any).knee_l) drawLine(pts.hip, (pts as any).knee);
-    if ((pts as any).knee && (pts as any).ankle) drawLine((pts as any).knee, (pts as any).ankle);
-    if (pts.shoulder && (pts as any).elbow_l) drawLine(pts.shoulder, (pts as any).elbow_l);
-    if ((pts as any).elbow_l && (pts as any).wrist_l) drawLine((pts as any).elbow_l, (pts as any).wrist_l);
-    if (pts.shoulder && (pts as any).elbow_r) drawLine(pts.shoulder, (pts as any).elbow_r);
-    if ((pts as any).elbow_r && (pts as any).wrist_r) drawLine((pts as any).elbow_r, (pts as any).wrist_r);
+    
+    // Direct hip to ankle if knee missing (like in some pushup/plank models)
+    if (pts.hip && pts.ankle_l && !pts.knee_l) drawLine(pts.hip, pts.ankle_l);
+    if (pts.hip && pts.ankle_r && !pts.knee_r) drawLine(pts.hip, pts.ankle_r);
+
+    // Arms
+    if (pts.shoulder && pts.elbow_l) drawLine(pts.shoulder, pts.elbow_l);
+    if (pts.elbow_l && pts.wrist_l) drawLine(pts.elbow_l, pts.wrist_l);
+    if (pts.shoulder && pts.elbow_r) drawLine(pts.shoulder, pts.elbow_r);
+    if (pts.elbow_r && pts.wrist_r) drawLine(pts.elbow_r, pts.wrist_r);
     
     ctx.globalAlpha = 1.0;
   };

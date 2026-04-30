@@ -370,6 +370,7 @@ export const analyzeFrame = async (req: Request, res: Response) => {
     const response: ApiResponse<{
       accuracy: number;
       feedback: string[];
+      suggestions: string[];
       primaryCoaching?: string;
       repCount?: number;
       angles?: any;
@@ -380,6 +381,7 @@ export const analyzeFrame = async (req: Request, res: Response) => {
       data: {
         accuracy: result.accuracy,
         feedback: result.feedback || ['Good form!'],
+        suggestions: result.suggestions || [],
         primaryCoaching: result.primary_coaching,
         repCount: currentRepCount,
         angles: result.angles,

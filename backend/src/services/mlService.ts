@@ -172,13 +172,15 @@ const mockPoseAnalysis = (landmarks: any, exerciseName: string, sessionId: strin
   }
 
   const isCorrectForm = accuracy > 75;
+  const suggestions = isCorrectForm ? [] : feedback.filter(f => !f.toLowerCase().includes('good') && !f.toLowerCase().includes('great'));
 
   return {
     exercise: name,
     accuracy: Math.max(60, Math.min(95, accuracy)),
     feedback: feedback,
-    primaryCoaching: feedback.length > 0 ? feedback[feedback.length - 1] : "Good form!",
-    primary_coaching: feedback.length > 0 ? feedback[feedback.length - 1] : "Good form!",
+    suggestions: suggestions,
+    primaryCoaching: suggestions.length > 0 ? suggestions[0] : (feedback.length > 0 ? feedback[0] : "Good form!"),
+    primary_coaching: suggestions.length > 0 ? suggestions[0] : (feedback.length > 0 ? feedback[0] : "Good form!"),
     angles: angles,
     repCount: state.repCount,
     isCorrectForm: isCorrectForm,
