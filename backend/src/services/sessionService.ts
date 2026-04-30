@@ -159,7 +159,7 @@ export class SessionService {
       status: session.status as any,
       score: session.averageScore || 0,
       reps: session.totalReps || 0,
-      feedback: session.overallFeedback?.join(', ') || null,
+      feedback: session.overallFeedback?.length ? session.overallFeedback.join(', ') : null,
       videoUrl: session.videoUrl || null
     };
   }
@@ -197,16 +197,16 @@ export class SessionService {
 
     return {
       id: (session._id as Types.ObjectId).toString(),
-      exerciseId: session.exerciseId._id.toString(),
-      userId: session.patientId.toString(),
-      doctorId: session.doctorId?.toString(),
+      exerciseId: (session.exerciseId?._id || session.exerciseId)?.toString() || 'unknown',
+      userId: (session.patientId?._id || session.patientId)?.toString() || 'unknown',
+      doctorId: (session.doctorId?._id || session.doctorId)?.toString(),
       startTime: session.startTime.toISOString(),
       endTime: session.endTime?.toISOString(),
       duration: session.duration || 0,
       status: session.status as any,
       score: session.averageScore || null,
       reps: session.totalReps || 0,
-      feedback: session.feedback ? {
+      feedback: session.overallFeedback ? {
         overallScore: session.averageScore || 0,
         strengths: session.strengths || [],
         improvementAreas: session.improvementAreas || [],
@@ -249,16 +249,16 @@ export class SessionService {
 
     return {
       id: (session._id as Types.ObjectId).toString(),
-      exerciseId: session.exerciseId._id.toString(),
-      userId: session.patientId._id.toString(),
-      doctorId: session.doctorId?._id.toString(),
+      exerciseId: (session.exerciseId?._id || session.exerciseId)?.toString() || 'unknown',
+      userId: (session.patientId?._id || session.patientId)?.toString() || 'unknown',
+      doctorId: (session.doctorId?._id || session.doctorId)?.toString(),
       startTime: session.startTime.toISOString(),
       endTime: session.endTime?.toISOString(),
       duration: session.duration || 0,
       status: session.status as any,
       score: session.averageScore || 0,
       reps: session.totalReps || 0,
-      feedback: session.overallFeedback?.join(', ') || null,
+      feedback: session.overallFeedback?.length ? session.overallFeedback.join(', ') : null,
       videoUrl: session.videoUrl || null
     };
   }

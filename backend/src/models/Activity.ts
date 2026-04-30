@@ -64,7 +64,8 @@ const ActivitySchema = new Schema<IActivity>(
       enum: [
         'exercise_started', 'exercise_completed', 'exercise_paused', 'exercise_cancelled',
         'session_uploaded', 'goal_achieved', 'milestone_reached', 'doctor_recommendation',
-        'progress_update', 'form_improvement', 'streak_achieved', 'new_exercise_assigned'
+        'progress_update', 'form_improvement', 'streak_achieved', 'new_exercise_assigned',
+        'connection_approved', 'connection_request', 'connection_terminated', 'connection_cancelled'
       ],
       required: true
     },

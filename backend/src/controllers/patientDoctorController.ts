@@ -782,15 +782,15 @@ export const getDoctors = async (req: Request, res: Response) => {
 
     // Convert _id to id for frontend compatibility
     const doctorsWithId = doctors.map(doctor => ({
-      id: (doctor as any)._id.toString(),
-      name: doctor.name,
-      email: doctor.email,
-      role: doctor.role,
+      id: (doctor as any)._id?.toString() || 'unknown',
+      name: doctor.name || 'Unknown Doctor',
+      email: doctor.email || '',
+      role: doctor.role || 'doctor',
       avatar: doctor.avatar,
       specialization: doctor.specialization,
       licenseNumber: doctor.licenseNumber,
-      isOnline: (doctor as any).isOnline,
-      lastSeen: (doctor as any).lastSeen
+      isOnline: (doctor as any).isOnline || false,
+      lastSeen: (doctor as any).lastSeen || null
     }));
 
     const response: ApiResponse<typeof doctorsWithId> = {
@@ -1048,16 +1048,16 @@ export const getPatientConnectionStatus = async (req: Request, res: Response) =>
     }).populate('doctorId', 'name email specialization isOnline lastSeen');
 
     const connectionStatus = {
-      isConnected: !!relation,
-      doctor: relation ? {
-        id: relation.doctorId._id.toString(),
-        name: (relation.doctorId as any).name,
-        email: (relation.doctorId as any).email,
+      isConnected: !!relation && !!relation.doctorId,
+      doctor: (relation && relation.doctorId) ? {
+        id: (relation.doctorId as any)._id?.toString() || (relation.doctorId as any).toString(),
+        name: (relation.doctorId as any).name || 'Unknown Doctor',
+        email: (relation.doctorId as any).email || '',
         specialization: (relation.doctorId as any).specialization,
         isOnline: (relation.doctorId as any).isOnline || false,
         lastSeen: (relation.doctorId as any).lastSeen?.toISOString() || null
       } : null,
-      relationshipId: relation ? (relation as any)._id.toString() : null,
+      relationshipId: relation ? (relation as any)._id?.toString() : null,
       status: relation?.status || null,
       connectionDate: relation?.startedAt?.toISOString() || null
     };
@@ -1101,13 +1101,13 @@ export const getOnlineDoctors = async (req: Request, res: Response) => {
 
     // Convert _id to id for frontend compatibility
     const doctorsWithId = doctors.map(doctor => ({
-      id: (doctor as any)._id.toString(),
-      name: doctor.name,
-      email: doctor.email,
+      id: (doctor as any)._id?.toString() || 'unknown',
+      name: doctor.name || 'Unknown Doctor',
+      email: doctor.email || '',
       specialization: doctor.specialization,
       licenseNumber: doctor.licenseNumber,
-      isOnline: doctor.isOnline,
-      lastSeen: doctor.lastSeen
+      isOnline: doctor.isOnline || false,
+      lastSeen: doctor.lastSeen || null
     }));
 
     const response: ApiResponse<typeof doctorsWithId> = {
