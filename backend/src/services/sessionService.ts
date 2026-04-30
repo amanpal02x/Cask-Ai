@@ -113,12 +113,12 @@ export class SessionService {
       exerciseId: session.exerciseId.toString(),
       type: 'exercise_completed',
       title: 'Exercise Session Completed',
-      description: `Completed exercise session with ${endData.totalReps} reps and ${endData.averageScore}% average score`,
+      description: `Completed exercise session with ${endData.totalReps || 0} reps and ${endData.averageScore || 0}% average score`,
       metadata: {
-        score: endData.averageScore,
-        reps: endData.totalReps,
+        score: endData.averageScore || 0,
+        reps: endData.totalReps || 0,
         duration,
-        improvement: endData.improvementAreas.length > 0 ? endData.improvementAreas[0] : null
+        improvement: (endData.improvementAreas && endData.improvementAreas.length > 0) ? endData.improvementAreas[0] : null
       },
       visibility: 'public'
     });

@@ -357,14 +357,14 @@ export const analyzeFrame = async (req: Request, res: Response) => {
     };
 
     if (Math.random() > 0.8) { // Save approx 20% of analyzed frames to DB to save space/perf
-        SessionService.addPoseFrame(sessionId, frameData);
+        SessionService.addPoseFrame(sessionId, frameData).catch(e => {});
     }
  
     // Update rep count from ML results
     let currentRepCount = session.reps || 0;
     if (result.repCount !== undefined && result.repCount > currentRepCount) {
       currentRepCount = result.repCount;
-      SessionService.updateSessionReps(sessionId, currentRepCount);
+      SessionService.updateSessionReps(sessionId, currentRepCount).catch(e => {});
     }
 
     const response: ApiResponse<{

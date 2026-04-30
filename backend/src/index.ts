@@ -19,6 +19,16 @@ import websocketService from './services/websocketService';
 
 dotenv.config();
 
+// Global Error Handlers to prevent crashes from unhandled rejections
+process.on('uncaughtException', (err) => {
+  
+  
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  
+});
+
 const app = express();
 
 // CORS must be at the top
@@ -129,5 +139,3 @@ if (process.env.NODE_ENV !== 'production' || !process.env.VERCEL) {
 }
 
 export default app;
-
-
