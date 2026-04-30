@@ -135,6 +135,23 @@ const mockPoseAnalysis = (landmarks: any, exerciseName: string, sessionId: strin
           state.stage = 'up';
         }
       }
+    } else if (name.includes('shoulder abduction')) {
+      const hip = landmarks[23];
+      const shoulder = landmarks[11];
+      const elbow = landmarks[13];
+      if (hip && shoulder && elbow) {
+        const angle = calculateAngle(hip, shoulder, elbow);
+        angles.shoulder = Math.round(angle);
+        if (angle > 80) state.stage = 'up';
+        else if (angle < 30 && state.stage === 'up') {
+          state.repCount++;
+          state.stage = 'down';
+        }
+        if (state.stage === 'up' && angle < 70) {
+          accuracy -= 5;
+          feedback.push("Raise your arm higher!");
+        }
+      }
     }
   } catch (e) {
     // Ignore calculation errors
@@ -160,6 +177,8 @@ const mockPoseAnalysis = (landmarks: any, exerciseName: string, sessionId: strin
     exercise: name,
     accuracy: Math.max(60, Math.min(95, accuracy)),
     feedback: feedback,
+    primaryCoaching: feedback.length > 0 ? feedback[feedback.length - 1] : "Good form!",
+    primary_coaching: feedback.length > 0 ? feedback[feedback.length - 1] : "Good form!",
     angles: angles,
     repCount: state.repCount,
     isCorrectForm: isCorrectForm,

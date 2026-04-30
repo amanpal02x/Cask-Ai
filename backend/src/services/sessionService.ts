@@ -348,10 +348,10 @@ export class SessionService {
 
     return sessions.map(session => ({
       id: (session._id as Types.ObjectId).toString(),
-      exerciseId: session.exerciseId._id.toString(),
-      exerciseName: session.exerciseId.name || 'Unknown Exercise',
-      userId: session.patientId._id.toString(),
-      patientName: session.patientId.name || 'Unknown Patient',
+      exerciseId: (session.exerciseId?._id || session.exerciseId)?.toString() || 'unknown',
+      exerciseName: session.exerciseId?.name || 'Unknown Exercise',
+      userId: (session.patientId?._id || session.patientId)?.toString() || 'unknown',
+      patientName: session.patientId?.name || 'Unknown Patient',
       doctorId: session.doctorId?.toString(),
       startTime: session.startTime.toISOString(),
       endTime: session.endTime?.toISOString(),
@@ -359,7 +359,7 @@ export class SessionService {
       status: session.status as any,
       score: session.averageScore || 0,
       reps: session.totalReps || 0,
-      feedback: session.overallFeedback?.join(', ') || null,
+      feedback: session.overallFeedback?.length ? session.overallFeedback.join(', ') : null,
       videoUrl: session.videoUrl || null
     }));
   }

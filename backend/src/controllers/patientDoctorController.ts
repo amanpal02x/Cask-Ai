@@ -29,18 +29,17 @@ export const getPatients = async (req: Request, res: Response) => {
     
     
     const patients = patientRelations.map(relation => {
-      if (!relation.patientId) {
-        
-        return null;
-      }
+      const patient = relation.patientId as any;
+      if (!patient) return null;
+      
       return {
-        relationshipId: (relation as any)._id.toString(),
-        id: (relation.patientId as any)._id.toString(),
-        name: (relation.patientId as any).name,
-        email: (relation.patientId as any).email,
-        role: (relation.patientId as any).role,
-        avatar: (relation.patientId as any).avatar,
-        createdAt: (relation.patientId as any).createdAt ? (relation.patientId as any).createdAt.toISOString() : new Date().toISOString(),
+        relationshipId: (relation as any)._id?.toString(),
+        id: (patient._id || patient).toString(),
+        name: patient.name || 'Unknown Patient',
+        email: patient.email || '',
+        role: patient.role || 'patient',
+        avatar: patient.avatar,
+        createdAt: patient.createdAt ? patient.createdAt.toISOString() : new Date().toISOString(),
         lastInteraction: relation.lastInteraction?.toISOString(),
         totalSessions: relation.totalSessions || 0,
         averageScore: relation.averageScore || 0,

@@ -57,6 +57,11 @@ const PostureGuidance: React.FC<PostureGuidanceProps> = ({
         'Step forward far enough to keep knee over ankle',
         'Keep your torso upright',
         'Lower your back knee towards the ground'
+      ],
+      'Shoulder Abduction': [
+        'Keep your back straight and core engaged',
+        'Raise your arm slowly to the side',
+        'Do not shrug your shoulders while lifting'
       ]
     };
     return tips[posture] || ['Focus on maintaining good form and posture'];

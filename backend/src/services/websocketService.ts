@@ -296,12 +296,15 @@ class WebSocketService {
         }).populate('patientId', 'name email');
 
         relationships.forEach(relationship => {
-          this.io?.to(relationship.patientId._id.toString()).emit('doctor_status_change', {
-            doctorId: userId,
-            doctorName: (relationship.patientId as any).name,
-            isOnline,
-            lastSeen: new Date()
-          });
+          const patientId = (relationship.patientId?._id || relationship.patientId)?.toString();
+          if (patientId) {
+            this.io?.to(patientId).emit('doctor_status_change', {
+              doctorId: userId,
+              doctorName: (relationship.doctorId as any)?.name || 'Doctor',
+              isOnline,
+              lastSeen: new Date()
+            });
+          }
         });
       } else if (userRole === 'patient') {
         // Notify the doctor connected to this patient
@@ -311,12 +314,15 @@ class WebSocketService {
         }).populate('doctorId', 'name email');
 
         if (relationship) {
-          this.io?.to(relationship.doctorId._id.toString()).emit('patient_status_change', {
-            patientId: userId,
-            patientName: (relationship.doctorId as any).name,
-            isOnline,
-            lastSeen: new Date()
-          });
+          const doctorId = (relationship.doctorId?._id || relationship.doctorId)?.toString();
+          if (doctorId) {
+            this.io?.to(doctorId).emit('patient_status_change', {
+              patientId: userId,
+              patientName: (relationship.patientId as any)?.name || 'Patient',
+              isOnline,
+              lastSeen: new Date()
+            });
+          }
         }
       }
     } catch (error) {
